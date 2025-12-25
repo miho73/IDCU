@@ -1,16 +1,11 @@
 ﻿#include "IDCU.h"
 
-void PrintBanner() {
-  cout << "IDCU Started";
-}
-
-void SetSpdLog() {
-  set_level(level::info);
-  set_pattern("[%Y-%m-%d %T.%e] [%^%5l%$] %v");
-}
-
 int main() {
-  SetSpdLog();
+  HANDLE consoleHandle = GetStdHandle(STD_OUTPUT_HANDLE);
+  CONSOLE_CURSOR_INFO info;
+  info.dwSize = 100;
+  info.bVisible = FALSE;
+  SetConsoleCursorInfo(consoleHandle, &info);
 
-  info("IDCU Application Starting...");
+  InitializeJoysticks();
 }
