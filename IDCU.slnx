@@ -3,5 +3,5 @@
     <Platform Name="x64" />
     <Platform Name="x86" />
   </Configurations>
-  <Project Path="IDCU.vcxproj" />
+  <Project Path="IDCU.vcxproj" Id="2c6be81d-1a7c-4cbf-b1c7-1d0612c5bda5" />
 </Solution>

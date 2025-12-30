@@ -87,7 +87,7 @@ bool simconnect_avail = false;
 
 uint32_t thrust_lever_ecam_msg = 0x0;
 uint32_t sidestick_ecam_msg = 0x0;
-uint32_t simconnect_ecam_msg = 0x0;
+uint32_t simconnect_ecam_msg = SIMCONNECT_DISCONNECTED;
 
 void BooleanFalse(bool* value) {
   if (*value) {
@@ -159,19 +159,6 @@ void ECAMPrint() {
     MEMORed("SIMCONNECT DISC");
     ECAMBlue("-MSFS APP", "START");
 	MEMOGreen("AUTO RECONN ACT");
-  }
-  if (simconnect_ecam_msg & SIMCONNECT_NOT_OPENED && !(simconnect_ecam_msg & SIMCONNECT_DISCONNECTED)) {
-    MEMOAmber("SIMCONNECT INOP");
-    ECAMBlue("-MSFS APP", "START");
-    MEMOWhite("  WAIT SIM LOADING");
-  }
-  if (simconnect_ecam_msg & SIMCONNECT_NOT_IN_SIM) {
-    MEMOAmber("NOT IN SIM");
-    ECAMBlue("-FLT", "START");
-  }
-  if (simconnect_ecam_msg & SIMCONNECT_UNSUPPORTED_ACFT) {
-    MEMOAmber("ACFT NOT SUPP");
-    ECAMBlue("-ACFT", "CHANGE");
   }
 
   if (thrust_lever_ecam_msg == 0) {

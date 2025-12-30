@@ -145,7 +145,7 @@
     <ClCompile Include="src\IDCU.cpp" />
     <ClCompile Include="src\joystick.cpp" />
     <ClCompile Include="src\sidestick.cpp" />
-    <ClCompile Include="src\SimBridge.cpp" />
+    <ClCompile Include="src\MobiFlightBridge.cpp" />
     <ClCompile Include="src\thrust_lever.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -153,7 +153,7 @@
     <ClInclude Include="include\IDCU.h" />
     <ClInclude Include="include\joystick.h" />
     <ClInclude Include="include\sidestick.h" />
-    <ClInclude Include="include\SimBridge.h" />
+    <ClInclude Include="include\MobiFlightBridge.h" />
     <ClInclude Include="include\SimConnect.h" />
     <ClInclude Include="include\thrust_lever.h" />
   </ItemGroup>

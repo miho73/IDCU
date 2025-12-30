@@ -12,12 +12,11 @@ int main() {
   InitializeJoysticks();
   FindJoysticks();
 
-  InitializeSimBridge();
-
   ECAMPrint();
+
   while (true) {
     ProcessThrustLeverInput();
-    DispatchSimBridgeMessage();
+    DispatchSimConnectMessage();
     Sleep(30);
   }
 }

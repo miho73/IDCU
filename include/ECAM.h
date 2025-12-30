@@ -19,9 +19,6 @@ using namespace std;
 #define THRUST_POLLING_FAULT		4
 
 #define SIMCONNECT_DISCONNECTED		1
-#define SIMCONNECT_NOT_OPENED		2
-#define SIMCONNECT_NOT_IN_SIM		4
-#define SIMCONNECT_UNSUPPORTED_ACFT	8
 
 extern bool sidestick_avail;
 extern bool thrustlever_avail;

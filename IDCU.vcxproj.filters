@@ -27,7 +27,7 @@
     <ClCompile Include="src\sidestick.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\SimBridge.cpp">
+    <ClCompile Include="src\MobiFlightBridge.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\thrust_lever.cpp">
@@ -41,7 +41,7 @@
     <ClInclude Include="include\sidestick.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="include\SimBridge.h">
+    <ClInclude Include="include\MobiFlightBridge.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="include\SimConnect.h">
