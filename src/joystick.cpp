@@ -11,10 +11,8 @@ GUID X56_SIDESTICK_ID;
 LPDIRECTINPUT8 pDI = NULL;
 
 void FindJoysticks();
-void JoystickMessageLoop();
 
 void InitializeJoysticks() {
-  ECAMAmber("DIR INPUT INIT", "IN PROG", false);
   HRESULT hr = DirectInput8Create(
     GetModuleHandle(NULL),
     DIRECTINPUT_VERSION,
@@ -24,15 +22,10 @@ void InitializeJoysticks() {
   );
 
   if (FAILED(hr)) {
-    ECAMRed("DIR INPUT INIT", "FAULT");
-
-    MEMORed("\nDIR INPUT FAULT");
-    exit(-1);
-    return;
+    MEMORed("DI8 CREATION FAULT");
+    ECAMBlue("-ERROR", GetHexErrorCode(hr));
+	halt();
   }
-  ECAMGreen("DIR INPUT INIT", "COMPLETE");
-
-  FindJoysticks();
 }
 
 BOOL CALLBACK EnumJoysticksCallback(const DIDEVICEINSTANCE* pdidInstance, VOID* pContext) {
@@ -52,8 +45,6 @@ BOOL CALLBACK EnumJoysticksCallback(const DIDEVICEINSTANCE* pdidInstance, VOID* 
 }
 
 void FindJoysticks() {
-  ECAMAmber("USB SCAN", "IN PROG", false);
-
   HRESULT hr = pDI->EnumDevices(
     DI8DEVCLASS_GAMECTRL,
     EnumJoysticksCallback,
@@ -62,60 +53,50 @@ void FindJoysticks() {
   );
 
   if (FAILED(hr)) {
-    ECAMAmber("USB SCAN", "FAULT");
-    MEMORed("\nINPUT SYS LOOKUP FAULT");
-    exit(-1);
+    MEMORed("DI8 DEVICE ENUM FAULT");
+    ECAMBlue("-ERROR", GetHexErrorCode(hr));
+    halt();
   }
-  else ECAMGreen("USB SCAN", "COMPLETE");
 
   if (sidestick_exists) {
     try {
-      if (FAILED(pDI->CreateDevice(SIDESTICK_GUID, &pSidestick, NULL))) throw 1;
-      if (FAILED(pSidestick->SetDataFormat(&c_dfDIJoystick2))) throw 2;
-      if (FAILED(pSidestick->SetCooperativeLevel(GetConsoleWindow(), DISCL_BACKGROUND | DISCL_NONEXCLUSIVE))) throw 3;
-      if (FAILED(pSidestick->Acquire())) throw 4;
+      if (FAILED(pDI->CreateDevice(SIDESTICK_GUID, &pSidestick, NULL))) throw;
+      if (FAILED(pSidestick->SetDataFormat(&c_dfDIJoystick2))) throw;
+      if (FAILED(pSidestick->SetCooperativeLevel(GetConsoleWindow(), DISCL_BACKGROUND | DISCL_NONEXCLUSIVE))) throw;
+      if (FAILED(pSidestick->Acquire())) throw;
 
+      sidestick_avail = true;
       ECAMGreen("SIDESTICK", "AVAIL");
     }
-    catch(int e) {
-      sidestick_exists = false;
+    catch (...) {
       ECAMAmber("SIDESTICK", "INOP");
     }
   }
   else ECAMAmber("SIDESTICK", "MISSING");
   if (thrustlever_exists) {
     try {
-      if (FAILED(pDI->CreateDevice(THRUSTLEVER_GUID, &pThrust, NULL))) throw 1;
-      if (FAILED(pThrust->SetDataFormat(&c_dfDIJoystick2))) throw 2;
-      if (FAILED(pThrust->SetCooperativeLevel(GetConsoleWindow(), DISCL_BACKGROUND | DISCL_NONEXCLUSIVE))) throw 3;
-      if (FAILED(pThrust->Acquire())) throw 4;
+      if (FAILED(pDI->CreateDevice(THRUSTLEVER_GUID, &pThrust, NULL))) throw;
+      if (FAILED(pThrust->SetDataFormat(&c_dfDIJoystick2))) throw;
+      if (FAILED(pThrust->SetCooperativeLevel(GetConsoleWindow(), DISCL_BACKGROUND | DISCL_NONEXCLUSIVE))) throw;
+      if (FAILED(pThrust->Acquire())) throw;
 
+      thrustlever_avail = true;
       ECAMGreen("THR LVR", "AVAIL");
     }
-    catch (int e) {
-      sidestick_exists = false;
+    catch (...) {
       ECAMAmber("THR LVR", "INOP");
     }
   }
   else ECAMAmber("THR LVR", "MISSING");
 
-  if (!sidestick_exists || !thrustlever_exists) {
-	MEMORed("\nINPUT SYS INIT FAULT");
+  if (!sidestick_avail || !thrustlever_avail) {
+	MEMORed("\nDI8 DEVICE INIT FAULT");
 	ECAMBlue("-DEVICE", "CHECK");
 	ECAMBlue("-CONNECTION", "VERIFY");
-	exit(-1);
+    halt();
   }
-
-  InitThrust();
-
-  JoystickMessageLoop();
-
-  if (pDI) pDI->Release();
 }
 
-void JoystickMessageLoop() {
-  while (true) {
-    ReadThrustLeverInput();
-    Sleep(30);
-  }
+void ReleaseDirectInput() {
+  if (pDI) pDI->Release();
 }

@@ -2,5 +2,4 @@
 
 extern LPDIRECTINPUTDEVICE8 pThrust;
 
-void InitThrust();
-void ReadThrustLeverInput();
+void ProcessThrustLeverInput();

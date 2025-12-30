@@ -18,24 +18,10 @@
       <Platform>x64</Platform>
     </ProjectConfiguration>
   </ItemGroup>
-  <ItemGroup>
-    <ClCompile Include="src\ECAM.cpp" />
-    <ClCompile Include="src\IDCU.cpp" />
-    <ClCompile Include="src\joystick.cpp" />
-    <ClCompile Include="src\sidestick.cpp" />
-    <ClCompile Include="src\thrust_lever.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="include\ECAM.h" />
-    <ClInclude Include="include\IDCU.h" />
-    <ClInclude Include="include\joystick.h" />
-    <ClInclude Include="include\sidestick.h" />
-    <ClInclude Include="include\thrust_lever.h" />
-  </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>18.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
-    <ProjectGuid>{a6f1374e-1337-4e08-86a0-a78dc0ecd091}</ProjectGuid>
+    <ProjectGuid>{2c6be81d-1a7c-4cbf-b1c7-1d0612c5bda5}</ProjectGuid>
     <RootNamespace>IDCU</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
@@ -84,6 +70,10 @@
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <OutDir>$(SolutionDir)build\$(Platform)\$(Configuration)</OutDir>
+    <IntDir>$(SolutionDir)build\$(Platform)\$(Configuration)\obj</IntDir>
+  </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
@@ -124,8 +114,10 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>$(CoreLibraryDependencies);%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(ProjectDir)lib</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(ProjectDir)lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <Version>
+      </Version>
+      <AdditionalDependencies>SimConnect.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -142,9 +134,29 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(ProjectDir)lib</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(ProjectDir)lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <Version>
+      </Version>
+      <AdditionalDependencies>SimConnect.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="src\ECAM.cpp" />
+    <ClCompile Include="src\IDCU.cpp" />
+    <ClCompile Include="src\joystick.cpp" />
+    <ClCompile Include="src\sidestick.cpp" />
+    <ClCompile Include="src\SimBridge.cpp" />
+    <ClCompile Include="src\thrust_lever.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="include\ECAM.h" />
+    <ClInclude Include="include\IDCU.h" />
+    <ClInclude Include="include\joystick.h" />
+    <ClInclude Include="include\sidestick.h" />
+    <ClInclude Include="include\SimBridge.h" />
+    <ClInclude Include="include\SimConnect.h" />
+    <ClInclude Include="include\thrust_lever.h" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
