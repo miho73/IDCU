@@ -36,6 +36,14 @@ enum ThrustButtons {
   MODE1 = 34,
   MODE2 = 35,
   MODE3 = 36,
+  H3_FWD = 21,
+  H3_UP = 20,
+  H3_DN = 22,
+  H3_AFT = 23,
+  H4_FWD = 25,
+  H4_UP = 24,
+  H4_DN = 26,
+  H4_AFT = 27
 };
 
 LPDIRECTINPUTDEVICE8 pThrust = NULL;
@@ -51,6 +59,7 @@ struct ButtonState128 {
 bool isThrustLeverInitialized = false;
 ButtonState128 prevButtonState;
 LONG LEFT_THROTTLE, RIGHT_THROTTLE, RTY1, RTY2, RTY3, RTY4, STKx, STKy;
+LONG RTY_LK_1 = -123, RTY_LK_2 = -123, RTY_LK_3 = -123, RTY_LK_4 = -123;
 
 void PressHandler(int btnID);
 void RTY1Handler();
@@ -139,19 +148,35 @@ void ProcessThrustLeverInput() {
 
   if (RTY1 != js.lZ) {
 	RTY1 = js.lZ;
-	RTY1Handler();
+	if (RTY_LK_1 == -123) RTY1Handler();
+    else if (abs(RTY_LK_1 - RTY1) > 0xFF) {
+	  RTY_LK_1 = -123;
+      RTY1Handler();
+    }
   }
   if (RTY2 != js.lRz) {
     RTY2 = js.lRz;
-    RTY2Handler();
+    if (RTY_LK_2 == -123) RTY2Handler();
+    else if (abs(RTY_LK_2 - RTY2) > 0xFF) {
+      RTY_LK_2 = -123;
+      RTY2Handler();
+    }
   }
   if (RTY3 != js.rglSlider[0]) {
     RTY3 = js.rglSlider[0];
-    RTY3Handler();
+    if (RTY_LK_3 == -123) RTY3Handler();
+    else if (abs(RTY_LK_3 - RTY3) > 0xFF) {
+      RTY_LK_3 = -123;
+      RTY3Handler();
+    }
   }
   if (RTY4 != js.rglSlider[1]) {
     RTY4 = js.rglSlider[1];
-    RTY4Handler();
+    if (RTY_LK_4 == -123) RTY4Handler();
+    else if (abs(RTY_LK_4 - RTY4) > 0xFF) {
+      RTY_LK_4 = -123;
+      RTY4Handler();
+    }
   }
 
   BooleanTrue(&thrustlever_avail);
@@ -162,28 +187,99 @@ void ProcessThrustLeverInput() {
 
 void RTY1Handler() {
   if (mode == 1) {
-    // PITCH TRIM WHEEL
+	int coarse = RTY1 * 18 / 65536 + 118;
+	if (coarse < 118) coarse = 118;
+	if (coarse > 136) coarse = 136;
+
+	if (acft_status.com1Coarse != coarse) {
+      acft_status.com1Coarse = coarse;
+      FireEVT(A32NX_CMD::E_COM1_RADIO_SET, acft_status.com1Coarse * 1e6 + acft_status.com1Fine * 1e3);
+    }
   }
   else if (mode == 2) {
-    // V/S KNOB
+    // NOT SET
+  }
+  else if (mode == 3) {
+    // NOT SET
   }
 }
 
 void RTY2Handler() {
   if (mode == 1) {
-    // RUDDER TRIM WHEEL
+    int fine = RTY2 * 199 / 65536;
+    fine *= 5;
+    if (fine < 0) fine = 0;
+    if (fine > 995) fine = 995;
+
+    if (acft_status.com1Fine != fine) {
+      acft_status.com1Fine = fine;
+      FireEVT(A32NX_CMD::E_COM1_RADIO_SET, acft_status.com1Coarse * 1e6 + acft_status.com1Fine * 1e3);
+    }
+  }
+  else if(mode == 2) {
+	int posH = (RTY2 - 32768) * 60 / 32768;
+    int pos = posH * 100;
+	if (acft_status.vsKnob != pos) {
+      acft_status.vsKnob = pos;
+	  FireEVT(A32NX_CMD::E_FCU_VS_SEL, pos);
+    }
+  }
+  else if(mode == 3) {
+    // NOT SET
   }
 }
 
 void RTY3Handler() {
-  if (mode == 1) { // SET FLOOD LT
-	
+  if (mode == 1) {
+    int pos = max(RTY3 * 100 / 65536 - 7, 0);
+    if (acft_status.captFldLT != pos) {
+	  acft_status.captFldLT = pos;
+      FireEVT(A32NX_CMD::E_LT_POTENTIOMETER, pos, 83);
+    }
+  }
+  else if (mode == 2) {
+    int pos = min(RTY3 * 100 / 65536 + 2, 100);
+    if (abs(acft_status.integLT - pos) >= 3 || pos == 0 || pos == 100) {
+	  acft_status.integLT = pos;
+      FireEVT(A32NX_CMD::E_LT_POTENTIOMETER, pos, 84);
+      FireEVT(A32NX_CMD::E_LT_POTENTIOMETER, pos, 85);
+      FireEVT(A32NX_CMD::E_LT_POTENTIOMETER, pos, 86);
+    }
+  }
+  else if (mode == 3) {
+	int pos = max(RTY3 * 100 / 65536, 1);
+    if (abs(acft_status.ecamBRT - pos) >= 4 || pos == 1) {
+      acft_status.ecamBRT = pos;
+      FireEVT(A32NX_CMD::E_LT_POTENTIOMETER, pos, 92);
+      FireEVT(A32NX_CMD::E_LT_POTENTIOMETER, pos, 93);
+    }
   }
 }
 
 void RTY4Handler() {
-  if (mode == 1) { // SET INTEG LT
-    
+  if (mode == 1) {
+    int pos = max(RTY4 * 100 / 65536 - 2, 0);
+    if (acft_status.fcuLCDBRT != pos) {
+	  acft_status.fcuLCDBRT = pos;
+      FireEVT(A32NX_CMD::E_LT_POTENTIOMETER, pos, 76);
+    }
+  }
+  else if(mode == 2) {
+    int pos = min(RTY4 * 100 / 65536 + 2, 100);
+    if (acft_status.fcuLCDBRT != pos) {
+	  acft_status.fcuLCDBRT = pos;
+      FireEVT(A32NX_CMD::E_LT_POTENTIOMETER, pos, 87);
+    }
+  }
+  else if (mode == 3) {
+    int pos = max(RTY4 * 100 / 65536, 1);
+    if (abs(acft_status.pfdBRT - pos) >= 6 || pos == 1) {
+      acft_status.pfdBRT = pos;
+      FireEVT(A32NX_CMD::E_LT_POTENTIOMETER, pos, 88);
+      FireEVT(A32NX_CMD::E_LT_POTENTIOMETER, pos, 89);
+      FireEVT(A32NX_CMD::E_LT_POTENTIOMETER, pos, 90);
+      FireEVT(A32NX_CMD::E_LT_POTENTIOMETER, pos, 91);
+    }
   }
 }
 
@@ -191,14 +287,23 @@ void PressHandler(int btnID) {
   switch (btnID) {  
     case MODE1:
       mode = 1;
+	  RTY_LK_1 = RTY1;
+	  RTY_LK_2 = RTY2;
+	  RTY_LK_3 = RTY3;
       ECAMPrint();
       return;
     case MODE2:
       mode = 2;
+      RTY_LK_1 = RTY1;
+      RTY_LK_2 = RTY2;
+      RTY_LK_3 = RTY3;
       ECAMPrint();
       return;
     case MODE3:
       mode = 3;
+      RTY_LK_1 = RTY1;
+      RTY_LK_2 = RTY2;
+      RTY_LK_3 = RTY3;
       ECAMPrint();
       return;
   }
@@ -214,7 +319,7 @@ void PressHandler(int btnID) {
         break;
       }
       case SW3: {
-		if (acft_status.groundSpoilerArmed == 0)
+        if (acft_status.groundSpoilerArmed == 0)
           FireEVT(A32NX_CMD::E_GND_SPOILER_ARM);
         break;
       }
@@ -246,7 +351,7 @@ void PressHandler(int btnID) {
         break;
       }
       case TGL1UP: {
-		SetLVAR(A32NX_CMD::L_PARK_BRK, 0);
+        SetLVAR(A32NX_CMD::L_PARK_BRK, 0);
         break;
       }
       case TGL1DN: {
@@ -264,7 +369,7 @@ void PressHandler(int btnID) {
         break;
       }
       case TGL3UP: {
-		SetLVAR(A32NX_CMD::L_NO_SMOKING_LVR, 0);
+        SetLVAR(A32NX_CMD::L_NO_SMOKING_LVR, 0);
         break;
       }
       case TGL3DN: {
@@ -301,11 +406,11 @@ void PressHandler(int btnID) {
         break;
       }
       case BTN_F: {
-        // NOT SET
+		ToggleEVT(A32NX_CMD::E_COM1_XFER_FREQ);
         break;
       }
       case BTN_G: {
-        // NOT SET
+        ToggleEVT(A32NX_CMD::E_COM1_XFER_FREQ);
         break;
       }
       case SLD: {
@@ -317,7 +422,7 @@ void PressHandler(int btnID) {
           SetLVAR(A32NX_CMD::E_BARO_UNIT_L, 0);
           SetLVAR(A32NX_CMD::E_BARO_UNIT_R, 0);
         }
-		break;
+        break;
       }
       case LEFT_KNOB_FWD: {
         ToggleEVT(A32NX_CMD::E_BARO_INC_L);
@@ -330,7 +435,7 @@ void PressHandler(int btnID) {
         break;
       }
       case LEVER_K1_UP: {
-		if (acft_status.mcduBrightness <= 7.5f)
+        if (acft_status.mcduBrightness <= 7.5f)
           SetLVAR(A32NX_CMD::A_MCDU_BRIGHTNESS, acft_status.mcduBrightness + 0.5f);
         break;
       }
@@ -339,104 +444,338 @@ void PressHandler(int btnID) {
           SetLVAR(A32NX_CMD::A_MCDU_BRIGHTNESS, acft_status.mcduBrightness - 0.5f);
         break;
       }
+      case H3_FWD: {
+        SetLVAR(A32NX_CMD::L_ECAM_PAGE, ENG);
+        break;
+      }
+      case H3_UP: {
+        SetLVAR(A32NX_CMD::L_ECAM_PAGE, APU);
+        break;
+      }
+      case H3_AFT: {
+        SetLVAR(A32NX_CMD::L_ECAM_PAGE, COND);
+        break;
+      }
+      case H3_DN: {
+        SetLVAR(A32NX_CMD::L_ECAM_PAGE, BLEED);
+        break;
+      }
+      case H4_FWD: {
+        SetLVAR(A32NX_CMD::L_ECAM_PAGE, PRESS);
+        break;
+      }
+      case H4_UP: {
+        SetLVAR(A32NX_CMD::L_ECAM_PAGE, ELEC);
+        break;
+      }
+      case H4_AFT: {
+        SetLVAR(A32NX_CMD::L_ECAM_PAGE, FUEL);
+        break;
+      }
+      case H4_DN: {
+        SetLVAR(A32NX_CMD::L_ECAM_PAGE, HYD);
+        break;
+      }
     }
   }
   else if (mode == 2) {
     switch (btnID) {
       case SW1: {
-        // PUSH SPD
+        ToggleEVT(A32NX_CMD::E_FCU_SPD_PUSH);
         break;
       }
       case SW2: {
-        // PULL SPD
+        ToggleEVT(A32NX_CMD::E_FCU_SPD_PULL);
         break;
       }
       case SW3: {
-        // PUSH HDG
+        ToggleEVT(A32NX_CMD::E_FCU_HDG_PULL);
         break;
       }
       case SW4: {
-        // PULL HDG
+        ToggleEVT(A32NX_CMD::E_FCU_HDG_PUSH);
         break;
       }
       case SW5: {
-        // PUSH ALT
+        ToggleEVT(A32NX_CMD::E_FCU_ALT_PUSH);
         break;
       }
       case SW6: {
-        // PULL ALT
+        ToggleEVT(A32NX_CMD::E_FCU_ALT_PULL);
         break;
       }
       case TGL1UP: {
-        // TOGGLE AP1
+        ToggleEVT(A32NX_CMD::E_FCU_AP1_PUSH);
         break;
       }
       case TGL1DN: {
-        // TOGGLE AP2
+        ToggleEVT(A32NX_CMD::E_FCU_AP2_PUSH);
         break;
       }
       case TGL2UP: {
-        // A/THR ENGAGE
+        ToggleEVT(A32NX_CMD::E_FCU_TRK_FPA_BTN);
         break;
       }
       case TGL2DN: {
-        // A/THR DISENGAGE
+        ToggleEVT(A32NX_CMD::E_FCU_ATHR_PUSH);
         break;
       }
       case TGL3UP: {
-        // PUSH QNH
+        ToggleEVT(A32NX_CMD::E_FCU_LOC_BTN);
         break;
       }
       case TGL3DN: {
-        // PULL QNH
+        ToggleEVT(A32NX_CMD::E_FCU_APPR_BTN);
         break;
       }
       case TGL4UP: {
-        // QNH inHg
+        ToggleEVT(A32NX_CMD::E_FCU_SPD_MACH_BTN);
         break;
       }
       case TGL4DN: {
-        // QNH hPa
+        ToggleEVT(A32NX_CMD::E_FCU_METRIC_ALT_BTN);
         break;
       }
       case BTN_H: {
-        // 
+        if (acft_status.terrOnR) SetLVAR(A32NX_CMD::L_TERR_R, 0);
+        else SetLVAR(A32NX_CMD::L_TERR_R, 1);
         break;
       }
       case BTN_I: {
-        // 
+        if(acft_status.terrOnL) SetLVAR(A32NX_CMD::L_TERR_L, 0);
+		else SetLVAR(A32NX_CMD::L_TERR_L, 1);
         break;
       }
       case BTN_E: {
-        // 
+		FireEVT(A32NX_CMD::E_FCU_VS_PULL);
         break;
       }
       case BTN_F: {
-        // LEVEL OFF
+        // NOT SET
         break;
       }
       case BTN_G: {
-        // 
+		FireEVT(A32NX_CMD::E_FCU_VS_PUSH);
+        break;
+      }
+      case SLD: {
+		FireEVT(A32NX_CMD::E_FCU_LS_PUSH);
         break;
       }
       case LEFT_KNOB_FWD: {
-        //
+        ToggleEVT(A32NX_CMD::E_FCU_ALT_INC, 0);
         break;
       }
       case LEFT_KNOB_AFT: {
-        //
+        ToggleEVT(A32NX_CMD::E_FCU_ALT_DEC, 0);
         break;
       }
       case LEVER_K1_UP: {
-        //
+		FireEVT(A32NX_CMD::E_FCU_ALT_INC_SET, 1000);
         break;
       }
       case LEVER_K1_DN: {
-        //
+        FireEVT(A32NX_CMD::E_FCU_ALT_INC_SET, 100);
+        break;
+      }
+      case H3_FWD: {
+        FireEVT(A32NX_CMD::L_ND_CSTR);
+        break;
+      }
+      case H3_UP: {
+        FireEVT(A32NX_CMD::L_ND_WPT);
+        break;
+      }
+      case H3_AFT: {
+        FireEVT(A32NX_CMD::L_ND_VORD);
+        break;
+      }
+      case H3_DN: {
+        FireEVT(A32NX_CMD::L_ND_ARPT);
+        break;
+      }
+      case H4_FWD: {
+        if (acft_status.ndMode > 0)
+		  SetLVAR(A32NX_CMD::L_ND_MODE, acft_status.ndMode - 1);
+        break;
+      }
+      case H4_UP: {
+        if(acft_status.ndRange > 0)
+		  SetLVAR(A32NX_CMD::L_ND_RANGE, acft_status.ndRange - 1);
+        break;
+      }
+      case H4_AFT: {
+        if (acft_status.ndMode < 4)
+          SetLVAR(A32NX_CMD::L_ND_MODE, acft_status.ndMode + 1);
+        break;
+      }
+      case H4_DN: {
+        if (acft_status.ndRange < 5)
+		  SetLVAR(A32NX_CMD::L_ND_RANGE, acft_status.ndRange + 1);
+        break;
       }
     }
   }
   else if (mode == 3) {
-
+    switch (btnID) {
+      case SW1: {
+        if(acft_status.integAnnLt > 0)
+          SetLVAR(A32NX_CMD::L_ANN_LT, acft_status.integAnnLt - 1);
+        break;
+      }
+      case SW2: {
+		if (acft_status.integAnnLt < 2)
+          SetLVAR(A32NX_CMD::L_ANN_LT, acft_status.integAnnLt + 1);
+        break;
+      }
+      case SW3: {
+		if (acft_status.strobeLt > 0)
+          SetLVAR(A32NX_CMD::L_STROBE_LT, acft_status.strobeLt - 1);
+        break;
+      }
+      case SW4: {
+		if (acft_status.strobeLt < 2)
+          SetLVAR(A32NX_CMD::L_STROBE_LT, acft_status.strobeLt + 1);
+        break;
+      }
+      case SW5: {
+        FireEVT(A32NX_CMD::E_LOGO_LT, 1);
+		FireEVT(A32NX_CMD::E_NAV_LT, 1);
+        break;
+      }
+      case SW6: {
+        FireEVT(A32NX_CMD::E_LOGO_LT, 0);
+        FireEVT(A32NX_CMD::E_NAV_LT, 0);
+        break;
+      }
+      case TGL1UP: {
+        if (acft_status.ldgLT > 0) {
+		  int nPos = acft_status.ldgLT - 1;
+          SetLVAR(A32NX_CMD::L_LDG_LT2, nPos);
+          SetLVAR(A32NX_CMD::L_LDG_LT3, nPos);
+        }
+        break;
+      }
+      case TGL1DN: {
+        if (acft_status.ldgLT < 2) {
+		  int nPos = acft_status.ldgLT + 1;
+          SetLVAR(A32NX_CMD::L_LDG_LT2, nPos);
+          SetLVAR(A32NX_CMD::L_LDG_LT3, nPos);
+        }
+        break;
+      }
+      case TGL2UP: {
+        if(acft_status.noseLT > 0)
+		  SetLVAR(A32NX_CMD::L_LDG_LT1, acft_status.noseLT - 1);
+        break;
+      }
+      case TGL2DN: {
+		if (acft_status.noseLT < 2)
+		  SetLVAR(A32NX_CMD::L_LDG_LT1, acft_status.noseLT + 1);
+        break;
+      }
+      case TGL3UP: {
+        FireEVT(A32NX_CMD::E_RWY_TURNOFF_LT_SET, 2, 1);
+        break;
+      }
+      case TGL3DN: {
+        FireEVT(A32NX_CMD::E_RWY_TURNOFF_LT_SET, 2, 0);
+        break;
+      }
+      case TGL4UP: {
+        FireEVT(A32NX_CMD::E_BEACON_SET, 0, 1);
+        break;
+      }
+      case TGL4DN: {
+        FireEVT(A32NX_CMD::E_BEACON_SET, 0, 0);
+        break;
+      }
+      case BTN_H: {
+        SetLVAR(A32NX_CMD::L_VHF_SEL, 2);
+        break;
+      }
+      case BTN_I: {
+		FireEVT(A32NX_CMD::L_VHF_SEL, 0);
+        break;
+      }
+      case BTN_E: {
+        if (acft_status.domeLT == 0) {
+          FireEVT(A32NX_CMD::E_DOME_LT, 1);
+          FireEVT(A32NX_CMD::E_LT_POTENTIOMETER, 20, 7);
+          acft_status.domeLT = 1;
+        }
+        else if (acft_status.domeLT == 1) {
+          FireEVT(A32NX_CMD::E_DOME_LT, 1);
+          FireEVT(A32NX_CMD::E_LT_POTENTIOMETER, 100, 7);
+          acft_status.domeLT = 2;
+        }
+        else if (acft_status.domeLT == 2) {
+          FireEVT(A32NX_CMD::E_DOME_LT, 0);
+          FireEVT(A32NX_CMD::E_LT_POTENTIOMETER, 0, 7);
+          acft_status.domeLT = 0;
+        }
+        break;
+      }
+      case BTN_F: {
+        // NOT SET
+        break;
+      }
+      case BTN_G: {
+        // NOT SET
+        break;
+      }
+      case SLD: {
+        // NOT SET
+        break;
+      }
+      case LEFT_KNOB_FWD: {
+        ToggleEVT(A32NX_CMD::E_ELT_INC);
+        break;
+      }
+      case LEFT_KNOB_AFT: {
+        ToggleEVT(A32NX_CMD::E_ELT_DEC);
+        break;
+      }
+      case LEVER_K1_UP: {
+		// NOT SET
+        break;
+      }
+      case LEVER_K1_DN: {
+		// NOT SET
+        break;
+      }
+      case H3_FWD: {
+        // NOT SET
+        break;
+      }
+      case H3_UP: {
+        // NOT SET
+        break;
+      }
+      case H3_AFT: {
+        // NOT SET
+        break;
+      }
+      case H3_DN: {
+        // NOT SET
+        break;
+      }
+      case H4_FWD: {
+        // NOT SET
+        break;
+      }
+      case H4_UP: {
+        // NOT SET
+        break;
+      }
+      case H4_AFT: {
+        // NOT SET
+        break;
+      }
+      case H4_DN: {
+        // NOT SET
+        break;
+      }
+    }
   }
 }

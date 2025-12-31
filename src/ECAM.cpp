@@ -161,6 +161,15 @@ void ECAMPrint() {
 	MEMOGreen("AUTO RECONN ACT");
   }
 
+  if(simconnect_ecam_msg & SIMCONNECT_MSG_SEND_FAULT) {
+    MEMOAmber("SIMCONNECT MSG NOT SENT");
+    ECAMBlue("-MSFS APP", "START");
+	ECAMBlue("MOBIFLIGHT", "CHECK");
+  }
+  if (simconnect_ecam_msg & SIMCONNECT_MSG_QUEUE_EXCEED) {
+    MEMOAmber("SIMCONNECT CMD BUFFER FULL");
+  }
+
   if (thrust_lever_ecam_msg == 0) {
     switch (mode) {
       case 1:
@@ -170,7 +179,7 @@ void ECAMPrint() {
       MEMOGreen("MODE NAV");
       break;
       case 3:
-      MEMOGreen("MODE COM");
+      MEMOGreen("MODE LT");
       break;
       default:
       MEMOAmber("MODE NOT SET");

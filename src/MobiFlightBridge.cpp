@@ -33,6 +33,30 @@ void DispatchSimConnectMessage() {
   }
 }
 
+HRESULT MapVAR(
+  HRESULT hr,
+  DATA_DEFINE_ID defID,
+  CLIENT_DATA_REQUEST_ID requestID
+) {
+  hr &= SimConnect_AddToClientDataDefinition(
+    hSimConnect,
+    defID,
+    SIZE_LVAR * (defID - 1000),
+    SIZE_LVAR, 0
+  );
+  hr &= SimConnect_RequestClientData(
+    hSimConnect,
+    CLIENT_DATA_MF_IDCU_LVARS,
+    requestID,
+    defID,
+    SIMCONNECT_CLIENT_DATA_PERIOD_ON_SET,
+    SIMCONNECT_CLIENT_DATA_REQUEST_FLAG_CHANGED,
+    0, 0, 0
+  );
+
+  return hr;
+}
+
 // SimConnect & MobiFlight Client Data 영역 초기화
 HRESULT InitSimConnect() {
   hSimConnect = NULL;
@@ -92,49 +116,24 @@ HRESULT InitSimConnect() {
     DEFINITION_MF_IDCU_RESPONSE,
     0, MF_MSG_BLOCK_SIZE, 0
   );
-  hr &= SimConnect_AddToClientDataDefinition(
-    hSimConnect,
-    DEFINITION_LVAR_GND_SPD_BRK_ARMED,
-    SIZE_LVAR * (DEFINITION_LVAR_GND_SPD_BRK_ARMED - 1000),
-    SIZE_LVAR, 0
-  );
-  hr &= SimConnect_AddToClientDataDefinition(
-    hSimConnect,
-    DEFINITION_LVAR_FLAPS_HANDLE,
-    SIZE_LVAR * (DEFINITION_LVAR_FLAPS_HANDLE - 1000),
-    SIZE_LVAR, 0
-  );
-  hr &= SimConnect_AddToClientDataDefinition(
-    hSimConnect,
-    DEFINITION_LVAR_ENG_MSTR1,
-    SIZE_LVAR * (DEFINITION_LVAR_ENG_MSTR1 - 1000),
-    SIZE_LVAR, 0
-  );
-  hr &= SimConnect_AddToClientDataDefinition(
-    hSimConnect,
-    DEFINITION_LVAR_ENG_MSTR2,
-    SIZE_LVAR * (DEFINITION_LVAR_ENG_MSTR2 - 1000),
-    SIZE_LVAR, 0
-  );
-  hr &= SimConnect_AddToClientDataDefinition(
-    hSimConnect,
-    DEFINITION_LVAR_MCDU_BRIGHTNESS,
-    SIZE_LVAR * (DEFINITION_LVAR_MCDU_BRIGHTNESS - 1000),
-    SIZE_LVAR, 0
-  );
-  hr &= SimConnect_AddToClientDataDefinition(
-    hSimConnect,
-    DEFINITION_LVAR_SEATBEALT_SIGN,
-    SIZE_LVAR * (DEFINITION_LVAR_SEATBEALT_SIGN - 1000),
-    SIZE_LVAR, 0
-  );
-  hr &= SimConnect_AddToClientDataDefinition(
-    hSimConnect,
-    DEFINITION_LVAR_BARO_MODE,
-    SIZE_LVAR * (DEFINITION_LVAR_BARO_MODE - 1000),
-    SIZE_LVAR, 0
-  );
 
+  hr &= MapVAR(hr, DEFINITION_LVAR_GND_SPD_BRK_ARMED, REQUEST_MF_SPD_BRK);
+  hr &= MapVAR(hr, DEFINITION_LVAR_FLAPS_HANDLE,      REQUEST_MF_FLAPS_HANDLE);
+  hr &= MapVAR(hr, DEFINITION_LVAR_ENG_MSTR1,         REQUEST_MF_ENG_MSTR1);
+  hr &= MapVAR(hr, DEFINITION_LVAR_ENG_MSTR2,         REQUEST_MF_ENG_MSTR2);
+  hr &= MapVAR(hr, DEFINITION_LVAR_MCDU_BRIGHTNESS,   REQUEST_MF_MCDU_BRIGHTNESS);
+  hr &= MapVAR(hr, DEFINITION_LVAR_SEATBEALT_SIGN,    REQUEST_MF_SEATBEALT_SIGN);
+  hr &= MapVAR(hr, DEFINITION_LVAR_BARO_MODE,         REQUEST_MF_BARO_MODE);
+  hr &= MapVAR(hr, DEFINITION_LVAR_TERR_L,            REQUEST_MF_TERR_L);
+  hr &= MapVAR(hr, DEFINITION_LVAR_TERR_R,            REQUEST_MF_TERR_R);
+  hr &= MapVAR(hr, DEFINITION_LVAR_ND_MODE,           REQUEST_MF_ND_MODE);
+  hr &= MapVAR(hr, DEFINITION_LVAR_ND_RANGE,          REQUEST_MF_ND_RANGE);
+  hr &= MapVAR(hr, DEFINITION_LVAR_INTEG_ANN_LT,      REQUEST_MF_INTEG_ANN_LT);
+  hr &= MapVAR(hr, DEFINITION_LVAR_STROBE_LT,         REQUEST_MF_STROBE_LT);
+  hr &= MapVAR(hr, DEFINITION_LVAR_LDG_LT,            REQUEST_MF_LDG_LT);
+  hr &= MapVAR(hr, DEFINITION_LVAR_NOSE_LT,           REQUEST_MF_NOSE_LT);
+  hr &= MapVAR(hr, DEFINITION_LVAR_COM1_FREQ,         REQUEST_MF_COM1_FREQ);
+  
   // Response, LVARS ClientData 요청
   hr &= SimConnect_RequestClientData(
     hSimConnect,
@@ -145,80 +144,25 @@ HRESULT InitSimConnect() {
     SIMCONNECT_CLIENT_DATA_REQUEST_FLAG_CHANGED,
     0, 0, 0
   );
-  hr &= SimConnect_RequestClientData(
-    hSimConnect,
-    CLIENT_DATA_MF_IDCU_LVARS,
-    REQUEST_MF_SPD_BRK,
-    DEFINITION_LVAR_GND_SPD_BRK_ARMED,
-    SIMCONNECT_CLIENT_DATA_PERIOD_ON_SET,
-    SIMCONNECT_CLIENT_DATA_REQUEST_FLAG_CHANGED,
-    0, 0, 0
-  );
-  hr &= SimConnect_RequestClientData(
-    hSimConnect,
-    CLIENT_DATA_MF_IDCU_LVARS,
-    REQUEST_MF_FLAPS_HANDLE,
-    DEFINITION_LVAR_FLAPS_HANDLE,
-    SIMCONNECT_CLIENT_DATA_PERIOD_ON_SET,
-    SIMCONNECT_CLIENT_DATA_REQUEST_FLAG_CHANGED,
-    0, 0, 0
-  );
-  hr &= SimConnect_RequestClientData(
-    hSimConnect,
-    CLIENT_DATA_MF_IDCU_LVARS,
-    REQUEST_MF_ENG_MSTR1,
-    DEFINITION_LVAR_ENG_MSTR1,
-    SIMCONNECT_CLIENT_DATA_PERIOD_ON_SET,
-    SIMCONNECT_CLIENT_DATA_REQUEST_FLAG_CHANGED,
-    0, 0, 0
-  );
-  hr &= SimConnect_RequestClientData(
-    hSimConnect,
-    CLIENT_DATA_MF_IDCU_LVARS,
-    REQUEST_MF_ENG_MSTR2,
-    DEFINITION_LVAR_ENG_MSTR2,
-    SIMCONNECT_CLIENT_DATA_PERIOD_ON_SET,
-    SIMCONNECT_CLIENT_DATA_REQUEST_FLAG_CHANGED,
-    0, 0, 0
-  );
-  hr &= SimConnect_RequestClientData(
-    hSimConnect,
-    CLIENT_DATA_MF_IDCU_LVARS,
-    REQUEST_MF_MCDU_BRIGHTNESS,
-    DEFINITION_LVAR_MCDU_BRIGHTNESS,
-    SIMCONNECT_CLIENT_DATA_PERIOD_ON_SET,
-    SIMCONNECT_CLIENT_DATA_REQUEST_FLAG_CHANGED,
-    0, 0, 0
-  );
-  hr &= SimConnect_RequestClientData(
-    hSimConnect,
-    CLIENT_DATA_MF_IDCU_LVARS,
-    REQUEST_MF_SEATBEALT_SIGN,
-    DEFINITION_LVAR_SEATBEALT_SIGN,
-    SIMCONNECT_CLIENT_DATA_PERIOD_ON_SET,
-    SIMCONNECT_CLIENT_DATA_REQUEST_FLAG_CHANGED,
-    0, 0, 0
-  );
-  hr &= SimConnect_RequestClientData(
-    hSimConnect,
-    CLIENT_DATA_MF_IDCU_LVARS,
-    REQUEST_MF_BARO_MODE,
-    DEFINITION_LVAR_BARO_MODE,
-    SIMCONNECT_CLIENT_DATA_PERIOD_ON_SET,
-    SIMCONNECT_CLIENT_DATA_REQUEST_FLAG_CHANGED,
-    0, 0, 0
-  );
   
   // 받아올 LVAR 요청
   SendMobiFlightCommand("MF.SimVars.Clear", false, 80);
   SendMobiFlightCommand("MF.SimVars.Add.(L:A32NX_SPOILERS_ARMED)", false, 80);
-  SendMobiFlightCommand("MF.SimVars.Add.(L:A32NX_FLAPS_HANDLE_INDEX)", false, 80);
   SendMobiFlightCommand("MF.SimVars.Add.(L:A32NX_FLAPS_HANDLE_INDEX)", false, 80);
   SendMobiFlightCommand("MF.SimVars.Add.(A:FUELSYSTEM VALVE SWITCH:1, Bool)", false, 80);
   SendMobiFlightCommand("MF.SimVars.Add.(A:FUELSYSTEM VALVE SWITCH:2, Bool)", false, 80);
   SendMobiFlightCommand("MF.SimVars.Add.(L:A32NX_MCDU_L_BRIGHTNESS)", false, 80);
   SendMobiFlightCommand("MF.SimVars.Add.(A:CABIN SEATBELTS ALERT SWITCH, Bool)", false, 80);
   SendMobiFlightCommand("MF.SimVars.Add.(L:A32NX_FCU_EFIS_L_DISPLAY_BARO_VALUE_MODE)", false, 80);
+  SendMobiFlightCommand("MF.SimVars.Add.(L:A32NX_EFIS_TERR_L_ACTIVE)", false, 80);
+  SendMobiFlightCommand("MF.SimVars.Add.(L:A32NX_EFIS_TERR_R_ACTIVE)", false, 80);
+  SendMobiFlightCommand("MF.SimVars.Add.(L:A32NX_FCU_EFIS_L_EFIS_MODE)", false, 80);
+  SendMobiFlightCommand("MF.SimVars.Add.(L:A32NX_FCU_EFIS_L_EFIS_RANGE)", false, 80);
+  SendMobiFlightCommand("MF.SimVars.Add.(L:A32NX_OVHD_INTLT_ANN)", false, 80);
+  SendMobiFlightCommand("MF.SimVars.Add.(L:LIGHTING_STROBE_0)", false, 80);
+  SendMobiFlightCommand("MF.SimVars.Add.(L:LIGHTING_LANDING_2)", false, 80);
+  SendMobiFlightCommand("MF.SimVars.Add.(L:LIGHTING_LANDING_1)", false, 80);
+  SendMobiFlightCommand("MF.SimVars.Add.(A:COM STANDBY FREQUENCY:1, kHz)", false, 80);
 
   if (SUCCEEDED(hr)) {
     BooleanTrue(&simconnect_avail);
@@ -261,6 +205,11 @@ void FireEVT(const string& keyEvent, int value) {
   SendMobiFlightCommand(command, false);
 }
 
+void FireEVT_f(const string& keyEvent, float value) {
+  string command = A32NX_CMD::PREFIX + to_string(value) + " (>K:" + keyEvent + ")";
+  SendMobiFlightCommand(command, false);
+}
+
 void FireEVT(const string& keyEvent, int v1, int v2) {
   string command = A32NX_CMD::PREFIX + to_string(v1) + " " + to_string(v2) + " (>K:2:" + keyEvent + ")";
   SendMobiFlightCommand(command, false);
@@ -268,6 +217,12 @@ void FireEVT(const string& keyEvent, int v1, int v2) {
 
 void ToggleEVT(const string& keyEvent) {
   string command = A32NX_CMD::PREFIX + "(>K:" + keyEvent + ")";
+  SendMobiFlightCommand(command, false);
+  SendMobiFlightCommand("", false, 80);
+}
+
+void ToggleEVT(const string& keyEvent, int v1) {
+  string command = A32NX_CMD::PREFIX + to_string(v1) + " (>K:" + keyEvent + ")";
   SendMobiFlightCommand(command, false);
   SendMobiFlightCommand("", false, 80);
 }
@@ -290,6 +245,12 @@ void SendMobiFlightCommand(const string& command, bool lock, int hold) {
 // 명령 큐 처음에 있는 명령어 전송
 void FireMFCommand() {
   if (mf_exec_lock || mf_command_queue.empty()) return;
+  if (mf_command_queue.size() > 64) {
+    FlagUp(&simconnect_ecam_msg, SIMCONNECT_MSG_QUEUE_EXCEED);
+  }
+  else {
+    FlagDown(&simconnect_ecam_msg, SIMCONNECT_MSG_QUEUE_EXCEED);
+  }
 
   char cmdStruct[1024];
 
@@ -312,10 +273,16 @@ void FireMFCommand() {
   );
 
   if (FAILED(hr)) {
+    FlagUp(&simconnect_ecam_msg, SIMCONNECT_MSG_SEND_FAULT);
+#ifdef DEBUG
     ECAMRed("SIMCONNECT CMD SEND FAIL", GetHexErrorCode(hr));
+#endif
   }
   if (SUCCEEDED(hr)) {
+	FlagDown(&simconnect_ecam_msg, SIMCONNECT_MSG_SEND_FAULT);
+#ifdef DEBUG
     ECAMGreen("SIMCONNECT CMD SENT", commandStruct.command);
+#endif
   }
 
   mf_exec_lock = commandStruct.execLock;
@@ -349,6 +316,15 @@ void ProcessMFResposneClientData(SIMCONNECT_RECV* pData) {
 	case DEFINITION_LVAR_MCDU_BRIGHTNESS:
 	case DEFINITION_LVAR_SEATBEALT_SIGN:
 	case DEFINITION_LVAR_BARO_MODE:
+    case DEFINITION_LVAR_TERR_L:
+	case DEFINITION_LVAR_TERR_R:
+	case DEFINITION_LVAR_ND_MODE:
+	case DEFINITION_LVAR_ND_RANGE:
+	case DEFINITION_LVAR_INTEG_ANN_LT:
+	case DEFINITION_LVAR_STROBE_LT:
+	case DEFINITION_LVAR_LDG_LT:
+    case DEFINITION_LVAR_NOSE_LT:
+	case DEFINITION_LVAR_COM1_FREQ:
     {
 	  float* data = (float*)(&pCData->dwData);
 	  updateACFTStatus((DATA_DEFINE_ID)(pCData->dwDefineID), *data);
@@ -388,6 +364,44 @@ void updateACFTStatus(
     }
     case DEFINITION_LVAR_BARO_MODE: {
 	  acft_status.baroMode = (int)val;
+	  break;
+    }
+    case DEFINITION_LVAR_TERR_L: {
+      acft_status.terrOnL = (int)val;
+      break;
+    }
+    case DEFINITION_LVAR_TERR_R: {
+      acft_status.terrOnR = (int)val;
+      break;
+    }
+    case DEFINITION_LVAR_ND_MODE: {
+      acft_status.ndMode = (int)val;
+      break;
+    }
+    case DEFINITION_LVAR_ND_RANGE: {
+      acft_status.ndRange = (int)val;
+      break;
+    }
+    case DEFINITION_LVAR_INTEG_ANN_LT: {
+	  acft_status.integAnnLt = (int)val;
+	  break;
+    }
+    case DEFINITION_LVAR_STROBE_LT: {
+      acft_status.strobeLt = (int)val;
+      break;
+    }
+    case DEFINITION_LVAR_LDG_LT: {
+      acft_status.ldgLT = (int)val;
+      break;
+    }
+    case DEFINITION_LVAR_NOSE_LT: {
+	  acft_status.noseLT = (int)val;
+	  break;
+    }
+    case DEFINITION_LVAR_COM1_FREQ: {
+      int freq = (int)(val);
+      acft_status.com1Coarse = freq / 1000;
+      acft_status.com1Fine = freq % 1000;
 	  break;
     }
   }
