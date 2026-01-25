@@ -1,4 +1,4 @@
-﻿#include "IDCU.h"
+﻿#include "ECAM.h"
 
 enum ThrustButtons {
   SW1 = 6,
@@ -69,42 +69,34 @@ void RTY4Handler();
 
 void ProcessThrustLeverInput() {
   HRESULT hr = pThrust->Poll();
+
   if (FAILED(hr)) {
-    hr = pThrust->Acquire();
-    if (hr == DIERR_UNPLUGGED) {
-      BooleanFalse(&thrustlever_avail);
-      FlagUp(&thrust_lever_ecam_msg, THRUST_POLLING_DATA_FAULT);
-    }
-    else if (hr == DIERR_INPUTLOST || hr == DIERR_NOTACQUIRED) {
-      BooleanFalse(&thrustlever_avail);
-      FlagUp(&thrust_lever_ecam_msg, THRUST_POLLING_LINK_FAULT);
-    }
-    else {
-      BooleanFalse(&thrustlever_avail);
-      FlagUp(&thrust_lever_ecam_msg, THRUST_POLLING_FAULT);
-    }
+    FlagUp(&joystick_ecam_msg, THRUST_POLLING_FAULT);
+    FlagUp(&joystick_ecam_msg, THRUST_NOT_FOUND);
+    pThrust = NULL;
     return;
   }
+  else
+	FlagDown(&joystick_ecam_msg, THRUST_POLLING_FAULT);
 
   DIJOYSTATE2 js;
   hr = pThrust->GetDeviceState(sizeof(DIJOYSTATE2), &js);
-  if (FAILED(hr)) {
-    HRESULT hr = pThrust->Acquire();
 
-    if (hr == DIERR_UNPLUGGED) {
-      BooleanFalse(&thrustlever_avail);
-      FlagUp(&thrust_lever_ecam_msg, THRUST_POLLING_DATA_FAULT);
-    }
-    else if (hr == DIERR_NOTACQUIRED || hr == DIERR_INPUTLOST) {
-      BooleanFalse(&thrustlever_avail);
-      FlagUp(&thrust_lever_ecam_msg, THRUST_POLLING_LINK_FAULT);
-    }
-    else {
-      BooleanFalse(&thrustlever_avail);
-      FlagUp(&thrust_lever_ecam_msg, THRUST_POLLING_FAULT);
+  if (FAILED(hr)) {
+    if (
+      hr == DIERR_INPUTLOST ||
+      hr == DIERR_NOTACQUIRED ||
+      hr == DIERR_NOTINITIALIZED ||
+      hr == DIERR_UNPLUGGED
+    ) {
+      pThrust = NULL;
+      FlagUp(&joystick_ecam_msg, THRUST_NOT_FOUND);
+	  FlagUp(&joystick_ecam_msg, THRUST_GET_FAULT);
     }
     return;
   }
+  else
+    FlagDown(&joystick_ecam_msg, THRUST_GET_FAULT);
 
   ButtonState128 currentButtonState;
   for (int i = 0; i < 128; ++i)
@@ -178,11 +170,6 @@ void ProcessThrustLeverInput() {
       RTY4Handler();
     }
   }
-
-  BooleanTrue(&thrustlever_avail);
-  FlagDown(&thrust_lever_ecam_msg, THRUST_POLLING_DATA_FAULT);
-  FlagDown(&thrust_lever_ecam_msg, THRUST_POLLING_LINK_FAULT);
-  FlagDown(&thrust_lever_ecam_msg, THRUST_POLLING_FAULT);
 }
 
 void RTY1Handler() {

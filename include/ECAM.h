@@ -14,20 +14,23 @@ using namespace std;
 #define ECAM_WHITE  "\033[37m"  // White (Title)
 #define RESET       "\033[0m"   // Color reset
 
-#define THRUST_POLLING_LINK_FAULT	1
-#define THRUST_POLLING_DATA_FAULT	2
-#define THRUST_POLLING_FAULT		4
+#define DIRECT_INPUT_INIT_FAULT		1
+#define DIRECT_INPUT_ENUM_FAULT		2
+#define THRUST_NOT_FOUND			4
+#define SIDESTICK_NOT_FOUND			8
+#define THRUST_INIT_FAULT			16
+#define SIDESTICK_INIT_FAULT		32
+#define THRUST_POLLING_FAULT		64
+#define THRUST_GET_FAULT			128
+#define SIDESTICK_POLLING_FAULT		256
+#define SIDESTICK_GET_FAULT			512
 
 #define SIMCONNECT_DISCONNECTED		1
 #define SIMCONNECT_MSG_SEND_FAULT	2
 #define SIMCONNECT_MSG_QUEUE_EXCEED	4
+#define SIMCONNECT_SYNC_IN_PROG     8
 
-extern bool sidestick_avail;
-extern bool thrustlever_avail;
-extern bool simconnect_avail;
-
-extern uint32_t thrust_lever_ecam_msg;
-extern uint32_t sidestick_ecam_msg;
+extern uint32_t joystick_ecam_msg;
 extern uint32_t simconnect_ecam_msg;
 
 string GetHexErrorCode(const HRESULT hr);

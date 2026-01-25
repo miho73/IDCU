@@ -172,9 +172,9 @@ enum CLIENT_DATA_REQUEST_ID {
 };
 
 struct MFCommandStruct {
+  int hold = 0;
   char command[1024];
   bool execLock;
-  int hold = 0;
 };
 
 struct ACFT_STATUS {

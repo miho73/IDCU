@@ -1,18 +1,12 @@
 ﻿#include "joystick.h"
 
-short mode = -1;
-
-bool thrustlever_exists = false;
-bool sidestick_exists = false;
-
-GUID X56_THRUSTLEVER_ID;
-GUID X56_SIDESTICK_ID;
+int mode = -1;
 
 LPDIRECTINPUT8 pDI = NULL;
 
-void FindJoysticks();
+void InitializeJoysticks();
 
-void InitializeJoysticks() {
+void InitializeDirectInput() {
   HRESULT hr = DirectInput8Create(
     GetModuleHandle(NULL),
     DIRECTINPUT_VERSION,
@@ -22,29 +16,73 @@ void InitializeJoysticks() {
   );
 
   if (FAILED(hr)) {
-    MEMORed("DI8 CREATION FAULT");
-    ECAMBlue("-ERROR", GetHexErrorCode(hr));
-	halt();
+	pDI = NULL;
+	FlagUp(&joystick_ecam_msg, DIRECT_INPUT_INIT_FAULT);
   }
+  else
+	FlagDown(&joystick_ecam_msg, DIRECT_INPUT_INIT_FAULT);
 }
 
-BOOL CALLBACK EnumJoysticksCallback(const DIDEVICEINSTANCE* pdidInstance, VOID* pContext) {
+void JoystickLoop() {
+  if (pThrust == NULL || pSidestick == NULL) {
+    InitializeJoysticks();
+  }
+
+  if (pThrust != NULL)
+    ProcessThrustLeverInput();
+  if (pSidestick != NULL)
+    ProcessSidestickInput();
+}
+
+BOOL CALLBACK EnumJoysticksCallback(
+  const DIDEVICEINSTANCE* pdidInstance,
+  VOID* pContext
+) {
   wstring productName = pdidInstance->tszProductName;
+  
+  if (
+      productName == THRUSTLEVER_NAME &&
+      IsEqualGUID(pdidInstance->guidProduct, THRUSTLEVER_GUID)
+  ) {
+    HRESULT hr = 0;
+	hr &= pDI->CreateDevice(pdidInstance->guidInstance, &pThrust, NULL);
+	hr &= pThrust->SetDataFormat(&c_dfDIJoystick2);
+	hr &= pThrust->SetCooperativeLevel(GetConsoleWindow(), DISCL_BACKGROUND | DISCL_NONEXCLUSIVE);
+    hr &= pThrust->Acquire();
 
-  if (productName == THRUSTLEVER_NAME && IsEqualGUID(pdidInstance->guidProduct, THRUSTLEVER_GUID)) {
-    thrustlever_exists = true;
-    X56_THRUSTLEVER_ID = pdidInstance->guidInstance;
+    if (FAILED(hr)) {
+      pThrust = NULL;
+	  FlagUp(&joystick_ecam_msg, THRUST_INIT_FAULT);
+    }
+	else
+      FlagDown(&joystick_ecam_msg, THRUST_INIT_FAULT);
   }
-  else if (productName == SIDESTICK_NAME && IsEqualGUID(pdidInstance->guidProduct, SIDESTICK_GUID)) {
-    sidestick_exists = true;
-    X56_SIDESTICK_ID = pdidInstance->guidInstance;
+  else if (
+      productName == SIDESTICK_NAME &&
+      IsEqualGUID(pdidInstance->guidProduct, SIDESTICK_GUID)
+  ) {
+    HRESULT hr = 0;
+    hr &= pDI->CreateDevice(pdidInstance->guidInstance, &pSidestick, NULL);
+    hr &= pSidestick->SetDataFormat(&c_dfDIJoystick2);
+    hr &= pSidestick->SetCooperativeLevel(GetConsoleWindow(), DISCL_BACKGROUND | DISCL_NONEXCLUSIVE);
+    hr &= pSidestick->Acquire();
+
+    if (FAILED(hr)) {
+	  pSidestick = NULL;
+	  FlagUp(&joystick_ecam_msg, SIDESTICK_INIT_FAULT);
+    }
+	else if(SUCCEEDED(hr))
+      FlagDown(&joystick_ecam_msg, SIDESTICK_INIT_FAULT);
   }
 
-  if (thrustlever_exists && sidestick_exists) return DIENUM_STOP;
+  if (pSidestick != NULL && pThrust != NULL) return DIENUM_STOP;
   else return DIENUM_CONTINUE;
 }
 
-void FindJoysticks() {
+void InitializeJoysticks() {
+  pThrust = NULL;
+  pSidestick = NULL;
+
   HRESULT hr = pDI->EnumDevices(
     DI8DEVCLASS_GAMECTRL,
     EnumJoysticksCallback,
@@ -53,48 +91,19 @@ void FindJoysticks() {
   );
 
   if (FAILED(hr)) {
-    MEMORed("DI8 DEVICE ENUM FAULT");
-    ECAMBlue("-ERROR", GetHexErrorCode(hr));
-    halt();
+    FlagUp(&joystick_ecam_msg, DIRECT_INPUT_ENUM_FAULT);
+    return;
   }
 
-  if (sidestick_exists) {
-    try {
-      if (FAILED(pDI->CreateDevice(SIDESTICK_GUID, &pSidestick, NULL))) throw;
-      if (FAILED(pSidestick->SetDataFormat(&c_dfDIJoystick2))) throw;
-      if (FAILED(pSidestick->SetCooperativeLevel(GetConsoleWindow(), DISCL_BACKGROUND | DISCL_NONEXCLUSIVE))) throw;
-      if (FAILED(pSidestick->Acquire())) throw;
+  if (pThrust == NULL)
+    FlagUp(&joystick_ecam_msg, THRUST_NOT_FOUND);
+  else
+    FlagDown(&joystick_ecam_msg, THRUST_NOT_FOUND);
 
-      sidestick_avail = true;
-      ECAMGreen("SIDESTICK", "AVAIL");
-    }
-    catch (...) {
-      ECAMAmber("SIDESTICK", "INOP");
-    }
-  }
-  else ECAMAmber("SIDESTICK", "MISSING");
-  if (thrustlever_exists) {
-    try {
-      if (FAILED(pDI->CreateDevice(THRUSTLEVER_GUID, &pThrust, NULL))) throw;
-      if (FAILED(pThrust->SetDataFormat(&c_dfDIJoystick2))) throw;
-      if (FAILED(pThrust->SetCooperativeLevel(GetConsoleWindow(), DISCL_BACKGROUND | DISCL_NONEXCLUSIVE))) throw;
-      if (FAILED(pThrust->Acquire())) throw;
-
-      thrustlever_avail = true;
-      ECAMGreen("THR LVR", "AVAIL");
-    }
-    catch (...) {
-      ECAMAmber("THR LVR", "INOP");
-    }
-  }
-  else ECAMAmber("THR LVR", "MISSING");
-
-  if (!sidestick_avail || !thrustlever_avail) {
-	MEMORed("\nDI8 DEVICE INIT FAULT");
-	ECAMBlue("-DEVICE", "CHECK");
-	ECAMBlue("-CONNECTION", "VERIFY");
-    halt();
-  }
+  if (pSidestick == NULL)
+    FlagUp(&joystick_ecam_msg, SIDESTICK_NOT_FOUND);
+  else
+	FlagDown(&joystick_ecam_msg, SIDESTICK_NOT_FOUND);
 }
 
 void ReleaseDirectInput() {

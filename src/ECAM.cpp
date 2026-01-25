@@ -80,13 +80,7 @@ string GetHexErrorCode(const HRESULT hr) {
   return ss.str();
 }
 
-
-bool sidestick_avail = false;
-bool thrustlever_avail = false;
-bool simconnect_avail = false;
-
-uint32_t thrust_lever_ecam_msg = 0x0;
-uint32_t sidestick_ecam_msg = 0x0;
+uint32_t joystick_ecam_msg = DIRECT_INPUT_INIT_FAULT;
 uint32_t simconnect_ecam_msg = SIMCONNECT_DISCONNECTED;
 
 void BooleanFalse(bool* value) {
@@ -120,57 +114,59 @@ void FlagDown(uint32_t* memory, uint32_t flag) {
 void ECAMPrint() {
   system("cls");
 
-  if (sidestick_avail) {
-    ECAMGreen("SIDESTICK", "AVAIL");
-  } else {
-    ECAMAmber("SIDESTICK", "INOP");
+  // RED MESSAGES
+  if (joystick_ecam_msg & DIRECT_INPUT_INIT_FAULT) {
+    MEMORed("DI8 INIT FAULT");
   }
-
-  if (thrustlever_avail) {
-    ECAMGreen("THR LVR", "AVAIL");
-  } else {
-    ECAMAmber("THR LVR", "INOP");
+  if (joystick_ecam_msg & DIRECT_INPUT_ENUM_FAULT) {
+    MEMORed("DI8 DEVICE ENUM FAULT");
   }
-
-  if(simconnect_avail) {
-    ECAMGreen("SIMCONNECT", "AVAIL");
-  } else {
-    ECAMAmber("SIMCONNECT", "INOP");
+  if (joystick_ecam_msg & THRUST_NOT_FOUND) {
+    MEMORed("THR LVR NOT FOUND");
+    ECAMBlue("-DEVICE", "CONNECT");
+	ECAMBlue("-CONNECTION", "VERIFY");
   }
-
-  cout << "\n";
-
-  if (thrust_lever_ecam_msg & THRUST_POLLING_LINK_FAULT) {
-    MEMOAmber("THR LVR LINK FAULT");
-	ECAMBlue("-IDCU WINDOW", "SELECT");
-    ECAMBlue("-OTHER PROGRAM", "EXIT");
-	MEMOGreen("AUTO RECOVER ACT");
-  }
-  if (thrust_lever_ecam_msg & THRUST_POLLING_DATA_FAULT) {
-    MEMORed("THR LVR LOST CONN");
-    ECAMBlue("-DEVICE", "CHECK");
+  if (joystick_ecam_msg & SIDESTICK_NOT_FOUND) {
+    MEMORed("SIDESTICK NOT FOUND");
+    ECAMBlue("-DEVICE", "CONNECT");
     ECAMBlue("-CONNECTION", "VERIFY");
   }
-  if (thrust_lever_ecam_msg & THRUST_POLLING_FAULT) {
-    MEMOAmber("THR LVR SYS FAULT");
+  if (joystick_ecam_msg & THRUST_INIT_FAULT) {
+    MEMORed("THR LVR INIT FAULT");
   }
-
+  if (joystick_ecam_msg & SIDESTICK_INIT_FAULT) {
+    MEMORed("SIDESTICK INIT FAULT");
+  }
   if (simconnect_ecam_msg & SIMCONNECT_DISCONNECTED) {
     MEMORed("SIMCONNECT DISC");
     ECAMBlue("-MSFS APP", "START");
-	MEMOGreen("AUTO RECONN ACT");
   }
 
+  // AMBER MESSAGES
+  if (joystick_ecam_msg & THRUST_POLLING_FAULT) {
+    MEMOAmber("THR LVR POLLING FAULT");
+  }
+  if (joystick_ecam_msg & THRUST_GET_FAULT) {
+    MEMOAmber("THR LVR GET FAULT");
+  }
+  if (joystick_ecam_msg & SIDESTICK_POLLING_FAULT) {
+    MEMOAmber("SIDE STICK POLLING FAULT");
+  }
+  if (joystick_ecam_msg & SIDESTICK_GET_FAULT) {
+    MEMOAmber("SIDE STICK GET FAULT");
+  }
   if(simconnect_ecam_msg & SIMCONNECT_MSG_SEND_FAULT) {
     MEMOAmber("SIMCONNECT MSG NOT SENT");
-    ECAMBlue("-MSFS APP", "START");
-	ECAMBlue("MOBIFLIGHT", "CHECK");
   }
   if (simconnect_ecam_msg & SIMCONNECT_MSG_QUEUE_EXCEED) {
     MEMOAmber("SIMCONNECT CMD BUFFER FULL");
   }
+  if (simconnect_ecam_msg & SIMCONNECT_SYNC_IN_PROG) {
+    MEMOAmber("SIMCONNECT SYNC IN PROG");
+  }
 
-  if (thrust_lever_ecam_msg == 0) {
+  // GREEN MESSAGES
+  if (joystick_ecam_msg == 0) {
     switch (mode) {
       case 1:
       MEMOGreen("MODE FCTL");

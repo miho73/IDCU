@@ -2,7 +2,7 @@
 
 extern HANDLE hSimConnect = NULL;
 
-HRESULT InitSimConnect();
+void InitSimConnect();
 void FireMFCommand();
 void CALLBACK IDCUDispatchProc(SIMCONNECT_RECV* pData, DWORD cbData, void* pContext);
 void ProcessMFResposneClientData(SIMCONNECT_RECV* pData);
@@ -12,22 +12,26 @@ ULONGLONG last_reconnect_at = 0;  // 마지막 재연결 시도 시점
 
 queue<MFCommandStruct> mf_command_queue;
 bool mf_exec_lock = false;
+bool mf_init_complete = false;
 
 ACFT_STATUS acft_status;
 
 const int SIZE_LVAR = sizeof(uint32_t);
 
 void DispatchSimConnectMessage() {
-  if (simconnect_avail) {
+  if (hSimConnect != NULL) {
     HRESULT hr = SimConnect_CallDispatch(hSimConnect, IDCUDispatchProc, NULL);
-    if (FAILED(hr)) InitSimConnect();
-    else { // 연결 정상시 명령어 전송 시도
-      FireMFCommand();
+
+    if (FAILED(hr)) {
+      FlagUp(&simconnect_ecam_msg, SIMCONNECT_DISCONNECTED);
+	  hSimConnect = NULL;
     }
+    else // 연결 정상시 명령어 전송 시도
+      FireMFCommand();
   }
 
   // 연결 시도
-  if (!simconnect_avail && GetTickCount64() - last_reconnect_at > 5000) {
+  else if (GetTickCount64() - last_reconnect_at > 5000) {
     last_reconnect_at = GetTickCount64();
     InitSimConnect();
   }
@@ -58,10 +62,10 @@ HRESULT MapVAR(
 }
 
 // SimConnect & MobiFlight Client Data 영역 초기화
-HRESULT InitSimConnect() {
+void InitSimConnect() {
   hSimConnect = NULL;
-  BooleanFalse(&simconnect_avail);
-  FlagUp(&simconnect_ecam_msg, SIMCONNECT_DISCONNECTED);
+  queue<MFCommandStruct> new_queue;
+  swap(mf_command_queue, new_queue);
 
   HRESULT hr = SimConnect_Open(&hSimConnect, "IDCU", nullptr, 0, 0, 0);
 
@@ -163,13 +167,13 @@ HRESULT InitSimConnect() {
   SendMobiFlightCommand("MF.SimVars.Add.(L:LIGHTING_LANDING_2)", false, 80);
   SendMobiFlightCommand("MF.SimVars.Add.(L:LIGHTING_LANDING_1)", false, 80);
   SendMobiFlightCommand("MF.SimVars.Add.(A:COM STANDBY FREQUENCY:1, kHz)", false, 80);
+  SendMobiFlightCommand("IDCU.SYNC_DONE", false, 0);
 
   if (SUCCEEDED(hr)) {
-    BooleanTrue(&simconnect_avail);
+    FlagUp(&simconnect_ecam_msg, SIMCONNECT_SYNC_IN_PROG);
     FlagDown(&simconnect_ecam_msg, SIMCONNECT_DISCONNECTED);
   }
-
-  return hr;
+  else hSimConnect = NULL;
 }
 
 void SetLVAR(const string& lvarName, int value) {
@@ -228,7 +232,11 @@ void ToggleEVT(const string& keyEvent, int v1) {
 }
 
 // MobiFlight.Command ClientData에 명령어 작성
-void SendMobiFlightCommand(const string& command, bool lock, int hold) {
+void SendMobiFlightCommand(
+  const string& command,
+  bool lock,
+  int hold
+) {
   MFCommandStruct mf_command;
 
   strcpy_s(mf_command.command, command.c_str());
@@ -248,15 +256,22 @@ void FireMFCommand() {
   if (mf_command_queue.size() > 64) {
     FlagUp(&simconnect_ecam_msg, SIMCONNECT_MSG_QUEUE_EXCEED);
   }
-  else {
+  else
     FlagDown(&simconnect_ecam_msg, SIMCONNECT_MSG_QUEUE_EXCEED);
-  }
 
   char cmdStruct[1024];
 
   mf_exec_lock = true;
   MFCommandStruct commandStruct = mf_command_queue.front();
   mf_command_queue.pop();
+
+  if (commandStruct.command[0] == 'I') {
+	if (strcmp(commandStruct.command, "IDCU.SYNC_DONE") == 0) {
+      FlagDown(&simconnect_ecam_msg, SIMCONNECT_SYNC_IN_PROG);
+    }
+    mf_exec_lock = commandStruct.execLock;
+    return;
+  }
 
   Sleep(commandStruct.hold);
 
@@ -272,18 +287,10 @@ void FireMFCommand() {
     &cmdStruct
   );
 
-  if (FAILED(hr)) {
+  if (FAILED(hr))
     FlagUp(&simconnect_ecam_msg, SIMCONNECT_MSG_SEND_FAULT);
-#ifdef DEBUG
-    ECAMRed("SIMCONNECT CMD SEND FAIL", GetHexErrorCode(hr));
-#endif
-  }
-  if (SUCCEEDED(hr)) {
+  else
 	FlagDown(&simconnect_ecam_msg, SIMCONNECT_MSG_SEND_FAULT);
-#ifdef DEBUG
-    ECAMGreen("SIMCONNECT CMD SENT", commandStruct.command);
-#endif
-  }
 
   mf_exec_lock = commandStruct.execLock;
 }
