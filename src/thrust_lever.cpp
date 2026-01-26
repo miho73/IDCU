@@ -174,12 +174,13 @@ void ProcessThrustLeverInput() {
 
 void RTY1Handler() {
   if (mode == 1) {
-	int coarse = RTY1 * 18 / 65536 + 118;
-	if (coarse < 118) coarse = 118;
-	if (coarse > 136) coarse = 136;
+    int fine = RTY1 * 199 / 65536;
+    fine *= 5;
+    if (fine < 0) fine = 0;
+    if (fine > 995) fine = 995;
 
-	if (acft_status.com1Coarse != coarse) {
-      acft_status.com1Coarse = coarse;
+    if (acft_status.com1Fine != fine) {
+      acft_status.com1Fine = fine;
       FireEVT(A32NX_CMD::E_COM1_RADIO_SET, acft_status.com1Coarse * 1e6 + acft_status.com1Fine * 1e3);
     }
   }
@@ -193,13 +194,12 @@ void RTY1Handler() {
 
 void RTY2Handler() {
   if (mode == 1) {
-    int fine = RTY2 * 199 / 65536;
-    fine *= 5;
-    if (fine < 0) fine = 0;
-    if (fine > 995) fine = 995;
+    int coarse = RTY2 * 18 / 65536 + 118;
+    if (coarse < 118) coarse = 118;
+    if (coarse > 136) coarse = 136;
 
-    if (acft_status.com1Fine != fine) {
-      acft_status.com1Fine = fine;
+    if (acft_status.com1Coarse != coarse) {
+      acft_status.com1Coarse = coarse;
       FireEVT(A32NX_CMD::E_COM1_RADIO_SET, acft_status.com1Coarse * 1e6 + acft_status.com1Fine * 1e3);
     }
   }
@@ -226,7 +226,7 @@ void RTY3Handler() {
   }
   else if (mode == 2) {
     int pos = min(RTY3 * 100 / 65536 + 2, 100);
-    if (abs(acft_status.integLT - pos) >= 3 || pos == 0 || pos == 100) {
+    if (abs(acft_status.integLT - pos) >= 2 || pos == 0 || pos == 100) {
 	  acft_status.integLT = pos;
       FireEVT(A32NX_CMD::E_LT_POTENTIOMETER, pos, 84);
       FireEVT(A32NX_CMD::E_LT_POTENTIOMETER, pos, 85);
@@ -235,7 +235,7 @@ void RTY3Handler() {
   }
   else if (mode == 3) {
 	int pos = max(RTY3 * 100 / 65536, 1);
-    if (abs(acft_status.ecamBRT - pos) >= 4 || pos == 1) {
+    if (abs(acft_status.ecamBRT - pos) >= 2 || pos == 1) {
       acft_status.ecamBRT = pos;
       FireEVT(A32NX_CMD::E_LT_POTENTIOMETER, pos, 92);
       FireEVT(A32NX_CMD::E_LT_POTENTIOMETER, pos, 93);
@@ -260,7 +260,7 @@ void RTY4Handler() {
   }
   else if (mode == 3) {
     int pos = max(RTY4 * 100 / 65536, 1);
-    if (abs(acft_status.pfdBRT - pos) >= 6 || pos == 1) {
+    if (abs(acft_status.pfdBRT - pos) >= 2 || pos == 1) {
       acft_status.pfdBRT = pos;
       FireEVT(A32NX_CMD::E_LT_POTENTIOMETER, pos, 88);
       FireEVT(A32NX_CMD::E_LT_POTENTIOMETER, pos, 89);
@@ -476,11 +476,11 @@ void PressHandler(int btnID) {
         break;
       }
       case SW3: {
-        ToggleEVT(A32NX_CMD::E_FCU_HDG_PULL);
+        ToggleEVT(A32NX_CMD::E_FCU_HDG_PUSH);
         break;
       }
       case SW4: {
-        ToggleEVT(A32NX_CMD::E_FCU_HDG_PUSH);
+        ToggleEVT(A32NX_CMD::E_FCU_HDG_PULL);
         break;
       }
       case SW5: {

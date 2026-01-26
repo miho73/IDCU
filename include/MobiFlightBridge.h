@@ -182,7 +182,6 @@ struct ACFT_STATUS {
   int flapsHandlePos;
   int engMasterState1;
   int engMasterState2;
-  float mcduBrightness;
   int seatbeltSign;
   int baroMode;
   int vsKnob = 0;
@@ -205,6 +204,7 @@ struct ACFT_STATUS {
 
   int com1Coarse = 0;
   int com1Fine = 0;
+  float mcduBrightness;
 };
 
 extern HANDLE hSimConnect;
