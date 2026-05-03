@@ -40,8 +40,9 @@ BOOL CALLBACK EnumJoysticksCallback(
 ) {
   wstring productName = pdidInstance->tszProductName;
   
+  
   if (
-      productName == THRUSTLEVER_NAME &&
+      //productName == THRUSTLEVER_NAME &&
       IsEqualGUID(pdidInstance->guidProduct, THRUSTLEVER_GUID)
   ) {
     HRESULT hr = 0;
@@ -58,7 +59,7 @@ BOOL CALLBACK EnumJoysticksCallback(
       FlagDown(&joystick_ecam_msg, THRUST_INIT_FAULT);
   }
   else if (
-      productName == SIDESTICK_NAME &&
+      //productName == SIDESTICK_NAME &&
       IsEqualGUID(pdidInstance->guidProduct, SIDESTICK_GUID)
   ) {
     HRESULT hr = 0;
