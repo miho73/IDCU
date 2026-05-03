@@ -38,20 +38,23 @@ BOOL CALLBACK EnumJoysticksCallback(
   const DIDEVICEINSTANCE* pdidInstance,
   VOID* pContext
 ) {
-  wstring productName = pdidInstance->tszProductName;
-  
+  std::wstring productName = pdidInstance->tszProductName;
   
   if (
       //productName == THRUSTLEVER_NAME &&
       IsEqualGUID(pdidInstance->guidProduct, THRUSTLEVER_GUID)
   ) {
     HRESULT hr = 0;
-	hr &= pDI->CreateDevice(pdidInstance->guidInstance, &pThrust, NULL);
-	hr &= pThrust->SetDataFormat(&c_dfDIJoystick2);
-	hr &= pThrust->SetCooperativeLevel(GetConsoleWindow(), DISCL_BACKGROUND | DISCL_NONEXCLUSIVE);
-    hr &= pThrust->Acquire();
+	hr = pDI->CreateDevice(pdidInstance->guidInstance, &pThrust, NULL);
+    
+    if (SUCCEEDED(hr)) {
+      hr |= pThrust->SetDataFormat(&c_dfDIJoystick2);
+      hr |= pThrust->SetCooperativeLevel(GetConsoleWindow(), DISCL_BACKGROUND | DISCL_NONEXCLUSIVE);
+      hr |= pThrust->Acquire();
+    }
 
     if (FAILED(hr)) {
+	  if (pThrust) pThrust->Release();
       pThrust = NULL;
 	  FlagUp(&joystick_ecam_msg, THRUST_INIT_FAULT);
     }
@@ -63,16 +66,20 @@ BOOL CALLBACK EnumJoysticksCallback(
       IsEqualGUID(pdidInstance->guidProduct, SIDESTICK_GUID)
   ) {
     HRESULT hr = 0;
-    hr &= pDI->CreateDevice(pdidInstance->guidInstance, &pSidestick, NULL);
-    hr &= pSidestick->SetDataFormat(&c_dfDIJoystick2);
-    hr &= pSidestick->SetCooperativeLevel(GetConsoleWindow(), DISCL_BACKGROUND | DISCL_NONEXCLUSIVE);
-    hr &= pSidestick->Acquire();
+    hr = pDI->CreateDevice(pdidInstance->guidInstance, &pSidestick, NULL);
+
+    if (SUCCEEDED(hr)) {
+      hr |= pSidestick->SetDataFormat(&c_dfDIJoystick2);
+      hr |= pSidestick->SetCooperativeLevel(GetConsoleWindow(), DISCL_BACKGROUND | DISCL_NONEXCLUSIVE);
+      hr |= pSidestick->Acquire();
+    }
 
     if (FAILED(hr)) {
+	  if (pSidestick) pSidestick->Release();
 	  pSidestick = NULL;
 	  FlagUp(&joystick_ecam_msg, SIDESTICK_INIT_FAULT);
     }
-	else if(SUCCEEDED(hr))
+	else
       FlagDown(&joystick_ecam_msg, SIDESTICK_INIT_FAULT);
   }
 
@@ -81,6 +88,9 @@ BOOL CALLBACK EnumJoysticksCallback(
 }
 
 void InitializeJoysticks() {
+  if (pThrust) pThrust->Release();
+  if (pSidestick) pSidestick->Release();
+
   pThrust = NULL;
   pSidestick = NULL;
 

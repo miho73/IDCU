@@ -5,8 +5,6 @@
 #include <iomanip>
 #include "joystick.h"
 
-using namespace std;
-
 #define ECAM_BLUE   "\033[36m"  // Cyan (Action/Label)
 #define ECAM_GREEN  "\033[32m"  // Green (Normal)
 #define ECAM_AMBER  "\033[33m"  // Yellow (Caution)
@@ -33,21 +31,19 @@ using namespace std;
 extern uint32_t joystick_ecam_msg;
 extern uint32_t simconnect_ecam_msg;
 
-string GetHexErrorCode(const HRESULT hr);
+std::string GetHexErrorCode(const HRESULT hr);
 
-void MEMOWhite(const string& message);
-void MEMOBlue(const string& message);
-void MEMOGreen(const string& message);
-void MEMOAmber(const string& message);
-void MEMORed(const string& message);
-void ECAMBlue(const string& message, const string& status, const bool isFinal = true);
-void ECAMGreen(const string& message, const string& status, const bool isFinal = true);
-void ECAMAmber(const string& message, const string& status, const bool isFinal = true);
-void ECAMRed(const string& message, const string& status, const bool isFinal = true);
+void MEMOWhite(const std::string& message);
+void MEMOBlue(const std::string& message);
+void MEMOGreen(const std::string& message);
+void MEMOAmber(const std::string& message);
+void MEMORed(const std::string& message);
+void ECAMBlue(const std::string& message, const std::string& status, const bool isFinal = true);
+void ECAMGreen(const std::string& message, const std::string& status, const bool isFinal = true);
+void ECAMAmber(const std::string& message, const std::string& status, const bool isFinal = true);
+void ECAMRed(const std::string& message, const std::string& status, const bool isFinal = true);
 void MoveUp(int lines);
 
-void BooleanFalse(bool* value);
-void BooleanTrue(bool* value);
 void FlagUp(uint32_t* memory, uint32_t flag);
 void FlagDown(uint32_t* memory, uint32_t flag);
 void ECAMPrint();

@@ -9,8 +9,8 @@ enum ECAMState {
   ECAM_STATE_BLUE   = 3,
 };
 
-void ECAMPrint(const string& label, const string& status, ECAMState state, const bool isFinal) {
-  string statusColor = RESET;
+void ECAMPrint(const std::string& label, const std::string& status, ECAMState state, const bool isFinal) {
+  std::string statusColor = RESET;
   
   switch (state) {
     case ECAM_STATE_RED:    statusColor = ECAM_RED;   break;
@@ -23,79 +23,65 @@ void ECAMPrint(const string& label, const string& status, ECAMState state, const
   int dots = TOTAL_WIDTH - label.length();
   if (dots < 0) dots = 0;
 
-  string dotsStr(dots, '.');
+  std::string dotsStr(dots, '.');
 
-  cout << "\r"
+  std::cout << "\r"
        << ECAM_BLUE << label << " " << dotsStr
        << RESET << " "
        << statusColor << status << RESET;
 
-  if (isFinal) cout << '\n';
+  if (isFinal) std::cout << '\n';
 }
 
-void MEMOWhite(const string& message) {
-  cout << ECAM_WHITE << message << RESET << '\n';
+void MEMOWhite(const std::string& message) {
+  std::cout << ECAM_WHITE << message << RESET << '\n';
 }
 
-void MEMOBlue(const string& message) {
-  cout << ECAM_BLUE << message << RESET << '\n';
+void MEMOBlue(const std::string& message) {
+  std::cout << ECAM_BLUE << message << RESET << '\n';
 }
 
-void MEMOGreen(const string& message) {
-  cout << ECAM_GREEN << message << RESET << '\n';
+void MEMOGreen(const std::string& message) {
+  std::cout << ECAM_GREEN << message << RESET << '\n';
 }
 
-void MEMOAmber(const string& message) {
-  cout << ECAM_AMBER << message << RESET << '\n';
+void MEMOAmber(const std::string& message) {
+  std::cout << ECAM_AMBER << message << RESET << '\n';
 }
 
-void MEMORed(const string& message) {
-  cout << ECAM_RED << message << RESET << '\n';
+void MEMORed(const std::string& message) {
+  std::cout << ECAM_RED << message << RESET << '\n';
 }
 
-void ECAMAmber(const string& message, const string& status, const bool isFinal) {
+void ECAMAmber(const std::string& message, const std::string& status, const bool isFinal) {
   ECAMPrint(message, status, ECAM_STATE_AMBER, isFinal);
 }
 
-void ECAMGreen(const string& message, const string& status, const bool isFinal) {
+void ECAMGreen(const std::string& message, const std::string& status, const bool isFinal) {
   ECAMPrint(message, status, ECAM_STATE_GREEN, isFinal);
 }
 
-void ECAMBlue(const string& message, const string& status, const bool isFinal) {
+void ECAMBlue(const std::string& message, const std::string& status, const bool isFinal) {
   ECAMPrint(message, status, ECAM_STATE_BLUE, isFinal);
 }
 
-void ECAMRed(const string& message, const string& status, const bool isFinal) {
+void ECAMRed(const std::string& message, const std::string& status, const bool isFinal) {
   ECAMPrint(message, status, ECAM_STATE_RED, isFinal);
 }
 
 void MoveUp(int lines) {
-  cout << "\x1b[" << lines << "A";
+  std::cout << "\x1b[" << lines << "A";
 }
 
-string GetHexErrorCode(const HRESULT hr) {
-  stringstream ss;
-  ss << hex << uppercase << setfill('0') << setw(8) << hr;
+std::string GetHexErrorCode(const HRESULT hr) {
+  std::stringstream ss;
+  ss << std::hex << std::uppercase << std::setfill('0') << std::setw(8) << hr;
 
   return ss.str();
 }
 
 uint32_t joystick_ecam_msg = DIRECT_INPUT_INIT_FAULT;
 uint32_t simconnect_ecam_msg = SIMCONNECT_DISCONNECTED;
-
-void BooleanFalse(bool* value) {
-  if (*value) {
-    *value = false;
-    ECAMPrint();
-  }
-}
-
-void BooleanTrue(bool* value) {
-  if (!*value) {
-    *value = true;
-    ECAMPrint();
-  }
-}
 
 void FlagUp(uint32_t* memory, uint32_t flag) {
   if ((*memory & flag) == 0) {
@@ -112,7 +98,7 @@ void FlagDown(uint32_t* memory, uint32_t flag) {
 }
 
 void ECAMPrint() {
-  system("cls");
+  std::cout << "\033[2J\033[H";
 
   // RED MESSAGES
   if (joystick_ecam_msg & DIRECT_INPUT_INIT_FAULT) {

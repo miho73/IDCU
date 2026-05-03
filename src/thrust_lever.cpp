@@ -25,14 +25,6 @@ enum ThrustButtons {
   LEVER_K1_DN = 29,
   LEFT_KNOB_FWD = 30,
   LEFT_KNOB_AFT = 31,
-  LEVER_H3_UP = 20,
-  LEVER_H3_FWD = 21,
-  LEVER_H3_DN = 22,
-  LEVER_H3_AFT = 23,
-  LEVER_H4_UP = 24,
-  LEVER_H4_FWD = 25,
-  LEVER_H4_DN = 26,
-  LEVER_H4_AFT = 27,
   MODE1 = 34,
   MODE2 = 35,
   MODE3 = 36,
@@ -73,6 +65,7 @@ void ProcessThrustLeverInput() {
   if (FAILED(hr)) {
     FlagUp(&joystick_ecam_msg, THRUST_POLLING_FAULT);
     FlagUp(&joystick_ecam_msg, THRUST_NOT_FOUND);
+    pThrust->Release();
     pThrust = NULL;
     return;
   }
@@ -89,6 +82,7 @@ void ProcessThrustLeverInput() {
       hr == DIERR_NOTINITIALIZED ||
       hr == DIERR_UNPLUGGED
     ) {
+	  if (pThrust) pThrust->Release();
       pThrust = NULL;
       FlagUp(&joystick_ecam_msg, THRUST_NOT_FOUND);
 	  FlagUp(&joystick_ecam_msg, THRUST_GET_FAULT);

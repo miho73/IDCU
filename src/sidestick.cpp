@@ -24,6 +24,7 @@ void ProcessSidestickInput() {
       hr == DIERR_NOTINITIALIZED ||
       hr == DIERR_UNPLUGGED
       ) {
+	  if (pSidestick) pSidestick->Release();
       pSidestick = NULL;
       FlagUp(&joystick_ecam_msg, SIDESTICK_NOT_FOUND);
       FlagUp(&joystick_ecam_msg, SIDESTICK_GET_FAULT);

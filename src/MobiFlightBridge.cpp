@@ -2,53 +2,38 @@
 
 extern HANDLE hSimConnect = NULL;
 
+// 함수 선정의
 void InitSimConnect();
 void FireMFCommand();
 void CALLBACK IDCUDispatchProc(SIMCONNECT_RECV* pData, DWORD cbData, void* pContext);
-void ProcessMFResposneClientData(SIMCONNECT_RECV* pData);
+void ProcessMFResponseClientData(SIMCONNECT_RECV* pData);
 void updateACFTStatus(DATA_DEFINE_ID defID, float val);
 
 ULONGLONG last_reconnect_at = 0;  // 마지막 재연결 시도 시점
 
-queue<MFCommandStruct> mf_command_queue;
+std::queue<MFCommandStruct> mf_command_queue;
 bool mf_exec_lock = false;
 bool mf_init_complete = false;
 
+// 항공기 상태 구조체
 ACFT_STATUS acft_status;
 
+// LVAR 정의 크기
 const int SIZE_LVAR = sizeof(uint32_t);
 
-void DispatchSimConnectMessage() {
-  if (hSimConnect != NULL) {
-    HRESULT hr = SimConnect_CallDispatch(hSimConnect, IDCUDispatchProc, NULL);
-
-    if (FAILED(hr)) {
-      FlagUp(&simconnect_ecam_msg, SIMCONNECT_DISCONNECTED);
-	  hSimConnect = NULL;
-    }
-    else // 연결 정상시 명령어 전송 시도
-      FireMFCommand();
-  }
-
-  // 연결 시도
-  else if (GetTickCount64() - last_reconnect_at > 5000) {
-    last_reconnect_at = GetTickCount64();
-    InitSimConnect();
-  }
-}
-
+// LVAR 요청 및 매핑
 HRESULT MapVAR(
   HRESULT hr,
   DATA_DEFINE_ID defID,
   CLIENT_DATA_REQUEST_ID requestID
 ) {
-  hr &= SimConnect_AddToClientDataDefinition(
+  hr |= SimConnect_AddToClientDataDefinition(
     hSimConnect,
     defID,
     SIZE_LVAR * (defID - 1000),
     SIZE_LVAR, 0
   );
-  hr &= SimConnect_RequestClientData(
+  hr |= SimConnect_RequestClientData(
     hSimConnect,
     CLIENT_DATA_MF_IDCU_LVARS,
     requestID,
@@ -61,28 +46,48 @@ HRESULT MapVAR(
   return hr;
 }
 
+// while 루프에서 직접 실행하는 SimConnect 메시지 디스패치 및 명령 전송 함수
+void DispatchSimConnectMessage() {
+  if (hSimConnect != NULL) { // 연결이 OK이면
+	HRESULT hr = SimConnect_CallDispatch(hSimConnect, IDCUDispatchProc, NULL); // SimConnect 메시지 디스패치 시도
+
+	if (FAILED(hr)) { // SimConnect 메시지를 받아올 수 없는 경우 연결 리셋
+      FlagUp(&simconnect_ecam_msg, SIMCONNECT_DISCONNECTED);
+	  hSimConnect = NULL;
+    }
+    else // 연결 정상시 명령어 전송 시도
+      FireMFCommand();
+  }
+
+  // 연결되어있지 않으면 연결 시도
+  else if (GetTickCount64() - last_reconnect_at > 5000) { // 5초 대기
+    last_reconnect_at = GetTickCount64();
+    InitSimConnect();
+  }
+}
+
 // SimConnect & MobiFlight Client Data 영역 초기화
 void InitSimConnect() {
   hSimConnect = NULL;
-  queue<MFCommandStruct> new_queue;
-  swap(mf_command_queue, new_queue);
+  std::queue<MFCommandStruct> new_queue;
+  std::swap(mf_command_queue, new_queue);
 
   HRESULT hr = SimConnect_Open(&hSimConnect, "IDCU", nullptr, 0, 0, 0);
 
   // IDCU client 생성 요청
-  hr &= SimConnect_MapClientDataNameToID(
+  hr |= SimConnect_MapClientDataNameToID(
     hSimConnect,
     MF_CLIENT_DATA_COMMAND,
     CLIENT_DATA_MF_COMMAND
   );
-  hr &= SimConnect_AddToClientDataDefinition(
+  hr |= SimConnect_AddToClientDataDefinition(
     hSimConnect,
     DEFINITION_MF_COMMAND,
     0, MF_MSG_BLOCK_SIZE, 0
   );
 
   char addClientCmd[] = "MF.Clients.Add.IDCU";
-  hr &= SimConnect_SetClientData(
+  hr |= SimConnect_SetClientData(
     hSimConnect,
     CLIENT_DATA_MF_COMMAND,
     DEFINITION_MF_COMMAND,
@@ -93,53 +98,53 @@ void InitSimConnect() {
   );
 
   // MobiFlight IDCU ClientData 매핑
-  hr &= SimConnect_MapClientDataNameToID(
+  hr |= SimConnect_MapClientDataNameToID(
     hSimConnect,
     MF_IDCU_CLIENT_DATA_COMMAND,
     CLIENT_DATA_MF_IDCU_COMMAND
   );
-  hr &= SimConnect_MapClientDataNameToID(
+  hr |= SimConnect_MapClientDataNameToID(
     hSimConnect,
     MF_IDCU_CLIENT_DATA_RESPONSE,
     CLIENT_DATA_MF_IDCU_RESPONSE
   );
-  hr &= SimConnect_MapClientDataNameToID(
+  hr |= SimConnect_MapClientDataNameToID(
     hSimConnect,
     MF_IDCU_CLIENT_DATA_LVARS,
     CLIENT_DATA_MF_IDCU_LVARS
   );
 
   // MobiFlight IDCU ClientData 정의
-  hr &= SimConnect_AddToClientDataDefinition(
+  hr |= SimConnect_AddToClientDataDefinition(
     hSimConnect,
     DEFINITION_MF_IDCU_COMMAND,
     0, MF_MSG_BLOCK_SIZE, 0
   );
-  hr &= SimConnect_AddToClientDataDefinition(
+  hr |= SimConnect_AddToClientDataDefinition(
     hSimConnect,
     DEFINITION_MF_IDCU_RESPONSE,
     0, MF_MSG_BLOCK_SIZE, 0
   );
 
-  hr &= MapVAR(hr, DEFINITION_LVAR_GND_SPD_BRK_ARMED, REQUEST_MF_SPD_BRK);
-  hr &= MapVAR(hr, DEFINITION_LVAR_FLAPS_HANDLE,      REQUEST_MF_FLAPS_HANDLE);
-  hr &= MapVAR(hr, DEFINITION_LVAR_ENG_MSTR1,         REQUEST_MF_ENG_MSTR1);
-  hr &= MapVAR(hr, DEFINITION_LVAR_ENG_MSTR2,         REQUEST_MF_ENG_MSTR2);
-  hr &= MapVAR(hr, DEFINITION_LVAR_MCDU_BRIGHTNESS,   REQUEST_MF_MCDU_BRIGHTNESS);
-  hr &= MapVAR(hr, DEFINITION_LVAR_SEATBEALT_SIGN,    REQUEST_MF_SEATBEALT_SIGN);
-  hr &= MapVAR(hr, DEFINITION_LVAR_BARO_MODE,         REQUEST_MF_BARO_MODE);
-  hr &= MapVAR(hr, DEFINITION_LVAR_TERR_L,            REQUEST_MF_TERR_L);
-  hr &= MapVAR(hr, DEFINITION_LVAR_TERR_R,            REQUEST_MF_TERR_R);
-  hr &= MapVAR(hr, DEFINITION_LVAR_ND_MODE,           REQUEST_MF_ND_MODE);
-  hr &= MapVAR(hr, DEFINITION_LVAR_ND_RANGE,          REQUEST_MF_ND_RANGE);
-  hr &= MapVAR(hr, DEFINITION_LVAR_INTEG_ANN_LT,      REQUEST_MF_INTEG_ANN_LT);
-  hr &= MapVAR(hr, DEFINITION_LVAR_STROBE_LT,         REQUEST_MF_STROBE_LT);
-  hr &= MapVAR(hr, DEFINITION_LVAR_LDG_LT,            REQUEST_MF_LDG_LT);
-  hr &= MapVAR(hr, DEFINITION_LVAR_NOSE_LT,           REQUEST_MF_NOSE_LT);
-  hr &= MapVAR(hr, DEFINITION_LVAR_COM1_FREQ,         REQUEST_MF_COM1_FREQ);
+  hr |= MapVAR(hr, DEFINITION_LVAR_GND_SPD_BRK_ARMED, REQUEST_MF_SPD_BRK);
+  hr |= MapVAR(hr, DEFINITION_LVAR_FLAPS_HANDLE,      REQUEST_MF_FLAPS_HANDLE);
+  hr |= MapVAR(hr, DEFINITION_LVAR_ENG_MSTR1,         REQUEST_MF_ENG_MSTR1);
+  hr |= MapVAR(hr, DEFINITION_LVAR_ENG_MSTR2,         REQUEST_MF_ENG_MSTR2);
+  hr |= MapVAR(hr, DEFINITION_LVAR_MCDU_BRIGHTNESS,   REQUEST_MF_MCDU_BRIGHTNESS);
+  hr |= MapVAR(hr, DEFINITION_LVAR_SEATBELT_SIGN,     REQUEST_MF_SEATBELT_SIGN);
+  hr |= MapVAR(hr, DEFINITION_LVAR_BARO_MODE,         REQUEST_MF_BARO_MODE);
+  hr |= MapVAR(hr, DEFINITION_LVAR_TERR_L,            REQUEST_MF_TERR_L);
+  hr |= MapVAR(hr, DEFINITION_LVAR_TERR_R,            REQUEST_MF_TERR_R);
+  hr |= MapVAR(hr, DEFINITION_LVAR_ND_MODE,           REQUEST_MF_ND_MODE);
+  hr |= MapVAR(hr, DEFINITION_LVAR_ND_RANGE,          REQUEST_MF_ND_RANGE);
+  hr |= MapVAR(hr, DEFINITION_LVAR_INTEG_ANN_LT,      REQUEST_MF_INTEG_ANN_LT);
+  hr |= MapVAR(hr, DEFINITION_LVAR_STROBE_LT,         REQUEST_MF_STROBE_LT);
+  hr |= MapVAR(hr, DEFINITION_LVAR_LDG_LT,            REQUEST_MF_LDG_LT);
+  hr |= MapVAR(hr, DEFINITION_LVAR_NOSE_LT,           REQUEST_MF_NOSE_LT);
+  hr |= MapVAR(hr, DEFINITION_LVAR_COM1_FREQ,         REQUEST_MF_COM1_FREQ);
   
   // Response, LVARS ClientData 요청
-  hr &= SimConnect_RequestClientData(
+  hr |= SimConnect_RequestClientData(
     hSimConnect,
     CLIENT_DATA_MF_IDCU_RESPONSE,
     REQUEST_MF_RESPONSE,
@@ -169,85 +174,81 @@ void InitSimConnect() {
   SendMobiFlightCommand("MF.SimVars.Add.(A:COM STANDBY FREQUENCY:1, kHz)", false, 80);
   SendMobiFlightCommand("IDCU.SYNC_DONE", false, 0);
 
-  if (SUCCEEDED(hr)) {
+  if (SUCCEEDED(hr)) { // 연결 절차 성공
     FlagUp(&simconnect_ecam_msg, SIMCONNECT_SYNC_IN_PROG);
     FlagDown(&simconnect_ecam_msg, SIMCONNECT_DISCONNECTED);
   }
-  else hSimConnect = NULL;
+  else hSimConnect = NULL; // 연결 함수중 하나라도 실패
 }
 
-void SetLVAR(const string& lvarName, int value) {
-  string command = A32NX_CMD::PREFIX + to_string(value) + " (>L:" + lvarName + ")";
+void SetLVAR(const std::string& lvarName, int value) {
+  std::string command = A32NX_CMD::PREFIX + std::to_string(value) + " (>L:" + lvarName + ")";
   SendMobiFlightCommand(command, false);
 }
 
-void SetLVAR(const string& lvarName, float value) {
-  string command = A32NX_CMD::PREFIX + to_string(value) + " (>L:" + lvarName + ")";
+void SetLVAR(const std::string& lvarName, float value) {
+  std::string command = A32NX_CMD::PREFIX + std::to_string(value) + " (>L:" + lvarName + ")";
   SendMobiFlightCommand(command, false);
 }
 
-void SetAVAR(const string& avarName, int value) {
-  string command = A32NX_CMD::PREFIX + to_string(value) + " (>A:" + avarName + ")";
+void SetAVAR(const std::string& avarName, int value) {
+  std::string command = A32NX_CMD::PREFIX + std::to_string(value) + " (>A:" + avarName + ")";
   SendMobiFlightCommand(command, false);
 }
 
-void PressLVAR(const string& lvarName) {
-  string command = A32NX_CMD::PREFIX + "1 (>L:" + lvarName + ")";
+void PressLVAR(const std::string& lvarName) {
+  std::string command = A32NX_CMD::PREFIX + "1 (>L:" + lvarName + ")";
   SendMobiFlightCommand(command, false);
 
   command = A32NX_CMD::PREFIX + "0 (>L:" + lvarName + ")";
   SendMobiFlightCommand(command, false, 600);
 }
 
-void FireEVT(const string& keyEvent) {
-  string command = A32NX_CMD::PREFIX + "(>K:" + keyEvent + ")";
+void FireEVT(const std::string& keyEvent) {
+  std::string command = A32NX_CMD::PREFIX + "(>K:" + keyEvent + ")";
   SendMobiFlightCommand(command, false);
 }
 
-void FireEVT(const string& keyEvent, int value) {
-  string command = A32NX_CMD::PREFIX + to_string(value) + " (>K:" + keyEvent + ")";
+void FireEVT(const std::string& keyEvent, int value) {
+  std::string command = A32NX_CMD::PREFIX +std::to_string(value) + " (>K:" + keyEvent + ")";
   SendMobiFlightCommand(command, false);
 }
 
-void FireEVT_f(const string& keyEvent, float value) {
-  string command = A32NX_CMD::PREFIX + to_string(value) + " (>K:" + keyEvent + ")";
+void FireEVT_f(const std::string& keyEvent, float value) {
+  std::string command = A32NX_CMD::PREFIX +std::to_string(value) + " (>K:" + keyEvent + ")";
   SendMobiFlightCommand(command, false);
 }
 
-void FireEVT(const string& keyEvent, int v1, int v2) {
-  string command = A32NX_CMD::PREFIX + to_string(v1) + " " + to_string(v2) + " (>K:2:" + keyEvent + ")";
+void FireEVT(const std::string& keyEvent, int v1, int v2) {
+  std::string command = A32NX_CMD::PREFIX +std::to_string(v1) + " " +std::to_string(v2) + " (>K:2:" + keyEvent + ")";
   SendMobiFlightCommand(command, false);
 }
 
-void ToggleEVT(const string& keyEvent) {
-  string command = A32NX_CMD::PREFIX + "(>K:" + keyEvent + ")";
+void ToggleEVT(const std::string& keyEvent) {
+  std::string command = A32NX_CMD::PREFIX + "(>K:" + keyEvent + ")";
   SendMobiFlightCommand(command, false);
   SendMobiFlightCommand("", false, 80);
 }
 
-void ToggleEVT(const string& keyEvent, int v1) {
-  string command = A32NX_CMD::PREFIX + to_string(v1) + " (>K:" + keyEvent + ")";
+void ToggleEVT(const std::string& keyEvent, int v1) {
+  std::string command = A32NX_CMD::PREFIX +std::to_string(v1) + " (>K:" + keyEvent + ")";
   SendMobiFlightCommand(command, false);
   SendMobiFlightCommand("", false, 80);
 }
 
 // MobiFlight.Command ClientData에 명령어 작성
 void SendMobiFlightCommand(
-  const string& command,
+  const std::string& command,
   bool lock,
   int hold
 ) {
   MFCommandStruct mf_command;
 
-  strcpy_s(mf_command.command, command.c_str());
+  strcpy_s(mf_command.command, MF_COMMAND_LENGTH, command.c_str());
   mf_command.execLock = lock;
   mf_command.hold = hold;
 
   mf_command_queue.push(mf_command);
-
-  if (mf_command_queue.empty()) {
-    FireMFCommand();
-  }
 }
 
 // 명령 큐 처음에 있는 명령어 전송
@@ -275,7 +276,7 @@ void FireMFCommand() {
 
   Sleep(commandStruct.hold);
 
-  strcpy_s(cmdStruct, commandStruct.command);
+  strcpy_s(cmdStruct, MF_COMMAND_LENGTH, commandStruct.command);
 
   HRESULT hr = SimConnect_SetClientData(
     hSimConnect,
@@ -299,20 +300,18 @@ void FireMFCommand() {
 void CALLBACK IDCUDispatchProc(SIMCONNECT_RECV* pData, DWORD cbData, void* pContext) {
   switch (pData->dwID) {
     case SIMCONNECT_RECV_ID_CLIENT_DATA: {
-	  ProcessMFResposneClientData(pData);
+	  ProcessMFResponseClientData(pData);
       break;
 	}
   }
 }
 
 // SimConnect Response ClientData 처리
-void ProcessMFResposneClientData(SIMCONNECT_RECV* pData) {
+void ProcessMFResponseClientData(SIMCONNECT_RECV* pData) {
   SIMCONNECT_RECV_CLIENT_DATA* pCData = (SIMCONNECT_RECV_CLIENT_DATA*)pData;
-  string str = std::string((char*)(&pCData->dwData));
   
   switch (pCData->dwDefineID) {
     case DEFINITION_MF_IDCU_RESPONSE: {
-      cout << pCData->dwDefineID << " " << str << endl;
       mf_exec_lock = false;
       break;
     }
@@ -321,7 +320,7 @@ void ProcessMFResposneClientData(SIMCONNECT_RECV* pData) {
     case DEFINITION_LVAR_ENG_MSTR1:
     case DEFINITION_LVAR_ENG_MSTR2:
 	case DEFINITION_LVAR_MCDU_BRIGHTNESS:
-	case DEFINITION_LVAR_SEATBEALT_SIGN:
+	case DEFINITION_LVAR_SEATBELT_SIGN:
 	case DEFINITION_LVAR_BARO_MODE:
     case DEFINITION_LVAR_TERR_L:
 	case DEFINITION_LVAR_TERR_R:
@@ -365,7 +364,7 @@ void updateACFTStatus(
       acft_status.mcduBrightness = val;
       break;
     }
-    case DEFINITION_LVAR_SEATBEALT_SIGN: {
+    case DEFINITION_LVAR_SEATBELT_SIGN: {
       acft_status.seatbeltSign = (int)val;
       break;
     }
